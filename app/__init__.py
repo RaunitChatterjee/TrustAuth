@@ -11,13 +11,13 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
-
     login_manager.init_app(app)
-
     bcrypt.init_app(app)
 
-    from app.auth.routes import auth
+    # Import models so SQLAlchemy knows about them
+    from models import User, UserSession, TypingEvent, SecurityEvent
 
+    from app.auth.routes import auth
     app.register_blueprint(auth)
 
     return app
