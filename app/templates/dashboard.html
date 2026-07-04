@@ -1,9 +1,190 @@
 {% extends "base.html" %}
 
+{% block title %}Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
 {% block content %}
 
-<h1>Dashboard</h1>
+<div style="margin-bottom: 24px;">
+  <h2 style="font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">
+    Good afternoon, {{ current_user.username if current_user is defined else "Aditi" }} 👋
+  </h2>
+  <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
+    Here's what's happening with your accounts today.
+  </p>
+</div>
 
-<p>Login Successful 🎉</p>
+<!-- Stat cards -->
+<div class="grid grid--3" style="margin-bottom: 24px;">
+  <div class="card stat-card">
+    <span class="stat-card__icon stat-card__icon--navy"><i data-lucide="wallet"></i></span>
+    <span class="stat-card__label">Current Balance</span>
+    <span class="stat-card__value num">₹2,48,320.50</span>
+    <span class="stat-card__delta stat-card__delta--up"><i data-lucide="arrow-up-right"></i>2.4% this month</span>
+  </div>
+
+  <div class="card stat-card">
+    <span class="stat-card__icon stat-card__icon--orange"><i data-lucide="trending-down"></i></span>
+    <span class="stat-card__label">Monthly Spending</span>
+    <span class="stat-card__value num">₹36,910.00</span>
+    <span class="stat-card__delta stat-card__delta--down"><i data-lucide="arrow-down-right"></i>8.1% vs last month</span>
+  </div>
+
+  <div class="card stat-card">
+    <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="trending-up"></i></span>
+    <span class="stat-card__label">Income</span>
+    <span class="stat-card__value num">₹95,000.00</span>
+    <span class="stat-card__delta stat-card__delta--up"><i data-lucide="arrow-up-right"></i>On schedule</span>
+  </div>
+</div>
+
+<!-- Quick actions -->
+<div class="quick-actions" style="margin-bottom: 24px;">
+  <a href="{{ url_for('main.transfer') }}" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="arrow-left-right"></i></span>
+    <span class="quick-action__label">Transfer Money</span>
+  </a>
+  <a href="#" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="receipt"></i></span>
+    <span class="quick-action__label">Pay Bills</span>
+  </a>
+  <a href="#" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="user-plus"></i></span>
+    <span class="quick-action__label">Add Beneficiary</span>
+  </a>
+  <a href="#" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="download"></i></span>
+    <span class="quick-action__label">Download Statement</span>
+  </a>
+</div>
+
+<div class="grid grid--2">
+  <!-- Left column -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title">Recent Transactions</span>
+        <a href="{{ url_for('main.transactions') }}" class="card__link">
+          View all <i data-lucide="chevron-right"></i>
+        </a>
+      </div>
+      <table class="table">
+        <thead>
+          <tr><th>Merchant</th><th>Date</th><th>Status</th><th style="text-align:right;">Amount</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="tx-merchant">
+                <span class="tx-icon"><i data-lucide="shopping-bag"></i></span>
+                <div><div>Amazon</div><div class="tx-sub">Shopping</div></div>
+              </div>
+            </td>
+            <td>Jul 04, 2026</td>
+            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
+            <td style="text-align:right;" class="amount--debit">− ₹2,499.00</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="tx-merchant">
+                <span class="tx-icon"><i data-lucide="zap"></i></span>
+                <div><div>Electricity Board</div><div class="tx-sub">Utilities</div></div>
+              </div>
+            </td>
+            <td>Jul 03, 2026</td>
+            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
+            <td style="text-align:right;" class="amount--debit">− ₹1,180.00</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="tx-merchant">
+                <span class="tx-icon"><i data-lucide="briefcase"></i></span>
+                <div><div>Salary Credit</div><div class="tx-sub">Income</div></div>
+              </div>
+            </td>
+            <td>Jul 01, 2026</td>
+            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
+            <td style="text-align:right;" class="amount--credit">+ ₹95,000.00</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="tx-merchant">
+                <span class="tx-icon"><i data-lucide="arrow-left-right"></i></span>
+                <div><div>Transfer to R. Mehta</div><div class="tx-sub">Sent</div></div>
+              </div>
+            </td>
+            <td>Jun 29, 2026</td>
+            <td><span class="pill pill--warning"><i data-lucide="shield-alert"></i>Verified</span></td>
+            <td style="text-align:right;" class="amount--debit">− ₹12,000.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right column: Security panel -->
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div class="trust-card" data-risk="low">
+      <div class="trust-card__top">
+        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
+        <span class="trust-card__badge" data-risk="low">Low Risk</span>
+      </div>
+      <div class="trust-card__score-row">
+        <div class="trust-card__score num">98<span>/100</span></div>
+        <div class="trust-card__wave-wrap">
+          <svg viewBox="0 0 200 46" preserveAspectRatio="none">
+            <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 200,23"/>
+          </svg>
+        </div>
+      </div>
+      <div class="trust-card__meta">
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Current Session</span>
+          <span class="trust-card__meta-value">14m 32s</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Last Authentication</span>
+          <span class="trust-card__meta-value">Today, 2:41 PM</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Risk Level</span>
+          <span class="trust-card__meta-value">Low</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title">Recent Security Events</span>
+        <a href="{{ url_for('main.security') }}" class="card__link">
+          Security Center <i data-lucide="chevron-right"></i>
+        </a>
+      </div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
+          <div class="timeline-content">
+            <div class="timeline-content__title">Login verified — typing pattern matched</div>
+            <div class="timeline-content__meta">Today, 2:41 PM · Chrome on Windows</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-dot timeline-dot--warning"><i data-lucide="shield-alert"></i></span>
+          <div class="timeline-content">
+            <div class="timeline-content__title">Step-up authentication requested during transfer</div>
+            <div class="timeline-content__meta">Jun 29, 2026, 6:12 PM · Behavioral deviation detected</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
+          <div class="timeline-content">
+            <div class="timeline-content__title">New device recognized and approved</div>
+            <div class="timeline-content__meta">Jun 24, 2026, 9:03 AM · iPhone 15</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

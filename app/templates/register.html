@@ -1,48 +1,91 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}Register{% endblock %}
+{% block body_class %}auth-body{% endblock %}
 
-<h1>Register</h1>
+{% block page %}
+<div class="auth-shell">
+  <section class="auth-panel">
+    <div class="auth-brand">
+      <span class="auth-brand__mark"><i data-lucide="shield-check"></i></span>
+      <span class="auth-brand__name">TrustAuth</span>
+    </div>
 
-<form method="POST">
+    <h1 class="auth-heading">Create your account</h1>
+    <p class="auth-subheading">It takes less than a minute to get started.</p>
 
-    <input
-        type="text"
-        name="username"
-        placeholder="Username"
-        required
-    >
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="notice notice--info" style="margin-bottom: 20px;">
+          <i data-lucide="info"></i>
+          <span>{{ messages[0] }}</span>
+        </div>
+      {% endif %}
+    {% endwith %}
 
-    <br><br>
+    <form method="POST" id="registerForm" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="field__control">
+          <i data-lucide="user" class="field-icon"></i>
+          <input type="text" id="username" name="username" class="has-icon" placeholder="Choose a username" autocomplete="username" required>
+        </div>
+      </div>
 
-    <input
-        type="email"
-        name="email"
-        placeholder="Email"
-        required
-    >
+      <div class="field">
+        <label for="email">Email</label>
+        <div class="field__control">
+          <i data-lucide="mail" class="field-icon"></i>
+          <input type="email" id="email" name="email" class="has-icon" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+      </div>
 
-    <br><br>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="field__control">
+          <i data-lucide="lock" class="field-icon"></i>
+          <input type="password" id="password" name="password" class="has-icon" placeholder="Create a password" autocomplete="new-password" required minlength="8">
+          <button type="button" class="toggle-visibility" data-target="password" aria-label="Show password">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+      </div>
 
-    <input
-        type="password"
-        name="password"
-        placeholder="Password"
-        required
-    >
+      <button type="submit" class="btn btn--primary btn--block">
+        <i data-lucide="user-plus"></i>
+        Create Account
+      </button>
+    </form>
 
-    <br><br>
+    <p class="auth-switch">
+      Already have an account? <a href="{{ url_for('auth.login') }}" class="link">Log in</a>
+    </p>
 
-    <button type="submit">
-        Register
-    </button>
+    <div class="auth-footer-note">
+      <i data-lucide="activity"></i>
+      <span>Behavioral Authentication Enabled</span>
+    </div>
+  </section>
 
-</form>
-
-<br>
-
-<a href="{{ url_for('auth.login') }}">
-    Login
-</a>
-
+  <section class="auth-illustration">
+    <div class="auth-illustration__panel">
+      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value" style="color:#6EE7B7;">—</span>
+          <span class="trust-widget__label" style="color:#94A3B8;">Building profile</span>
+        </div>
+      </div>
+      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
+      </svg>
+      <p class="auth-illustration__caption">
+        <strong>Your typing rhythm becomes your baseline.</strong>
+        Over your first few sessions, TrustAuth quietly learns how you type, so it can recognize you — and notice when it isn't you.
+      </p>
+    </div>
+  </section>
+</div>
 {% endblock %}

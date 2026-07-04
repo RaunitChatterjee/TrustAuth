@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Security Center{% endblock %}
+{% block page_title %}Security Center{% endblock %}
+
+{% block content %}
+
+<div class="trust-card" data-risk="low" style="margin-bottom: 24px;">
+  <div class="trust-card__top">
+    <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
+    <span class="trust-card__badge" data-risk="low">Low Risk</span>
+  </div>
+  <div class="trust-card__score-row">
+    <div class="trust-card__score num">98<span>/100</span></div>
+    <div class="trust-card__wave-wrap">
+      <svg viewBox="0 0 200 46" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 120,18 130,28 140,23 200,23"/>
+      </svg>
+    </div>
+  </div>
+  <div class="trust-card__meta">
+    <div class="trust-card__meta-item">
+      <span class="trust-card__meta-label">Current Session</span>
+      <span class="trust-card__meta-value">18m 04s · Chrome / Windows</span>
+    </div>
+    <div class="trust-card__meta-item">
+      <span class="trust-card__meta-label">Last Authentication</span>
+      <span class="trust-card__meta-value">Today, 2:41 PM</span>
+    </div>
+    <div class="trust-card__meta-item">
+      <span class="trust-card__meta-label">Behavioral Model</span>
+      <span class="trust-card__meta-value">Calibrated · 42 sessions</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid--2" style="margin-bottom: 24px;">
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Login History</span>
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>Date & Time</th><th>Device</th><th>Location</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Jul 05, 2026 · 2:41 PM</td>
+          <td>Chrome / Windows</td>
+          <td>Delhi, IN</td>
+          <td><span class="pill pill--success"><i data-lucide="check"></i>Verified</span></td>
+        </tr>
+        <tr>
+          <td>Jun 29, 2026 · 6:12 PM</td>
+          <td>Chrome / Windows</td>
+          <td>Delhi, IN</td>
+          <td><span class="pill pill--warning"><i data-lucide="shield-alert"></i>Step-up used</span></td>
+        </tr>
+        <tr>
+          <td>Jun 24, 2026 · 9:03 AM</td>
+          <td>Safari / iPhone 15</td>
+          <td>Gurugram, IN</td>
+          <td><span class="pill pill--success"><i data-lucide="check"></i>Verified</span></td>
+        </tr>
+        <tr>
+          <td>Jun 18, 2026 · 11:47 PM</td>
+          <td>Firefox / Linux</td>
+          <td>Unrecognized region</td>
+          <td><span class="pill pill--danger"><i data-lucide="x"></i>Blocked</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Devices</span>
+    </div>
+    <div class="device-row">
+      <span class="device-icon"><i data-lucide="monitor"></i></span>
+      <div class="device-info">
+        <div class="device-info__name">Windows PC — Chrome</div>
+        <div class="device-info__meta">This device · Last active now</div>
+      </div>
+      <div class="device-row__spacer"></div>
+      <span class="pill pill--success">Trusted</span>
+    </div>
+    <div class="device-row">
+      <span class="device-icon"><i data-lucide="smartphone"></i></span>
+      <div class="device-info">
+        <div class="device-info__name">iPhone 15 — Safari</div>
+        <div class="device-info__meta">Last active 3 days ago</div>
+      </div>
+      <div class="device-row__spacer"></div>
+      <span class="pill pill--success">Trusted</span>
+    </div>
+    <div class="device-row">
+      <span class="device-icon"><i data-lucide="laptop"></i></span>
+      <div class="device-info">
+        <div class="device-info__name">Linux — Firefox</div>
+        <div class="device-info__meta">Blocked · unrecognized region</div>
+      </div>
+      <div class="device-row__spacer"></div>
+      <span class="pill pill--danger">Revoked</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid--2">
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Security Timeline</span>
+    </div>
+    <div class="timeline">
+      <div class="timeline-item">
+        <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
+        <div class="timeline-content">
+          <div class="timeline-content__title">Login verified — typing pattern matched baseline</div>
+          <div class="timeline-content__meta">Today, 2:41 PM</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-dot timeline-dot--warning"><i data-lucide="shield-alert"></i></span>
+        <div class="timeline-content">
+          <div class="timeline-content__title">Step-up authentication triggered mid-transfer</div>
+          <div class="timeline-content__meta">Jun 29, 2026, 6:12 PM · Keystroke deviation of 34%</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-dot timeline-dot--danger"><i data-lucide="ban"></i></span>
+        <div class="timeline-content">
+          <div class="timeline-content__title">Login attempt blocked — behavioral mismatch</div>
+          <div class="timeline-content__meta">Jun 18, 2026, 11:47 PM · Unrecognized region + failed re-auth</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
+        <div class="timeline-content">
+          <div class="timeline-content__title">New device approved via step-up verification</div>
+          <div class="timeline-content__meta">Jun 24, 2026, 9:03 AM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title">Recent Alerts</span>
+      </div>
+      <div class="notice notice--info" style="margin-bottom: 12px;">
+        <i data-lucide="shield-alert"></i>
+        <span>Unusual typing rhythm detected during your last transfer. We asked for extra verification, and it was completed successfully.</span>
+      </div>
+      <div class="notice notice--success">
+        <i data-lucide="check-circle"></i>
+        <span>Login blocked from an unrecognized region on Jun 18. No further action needed.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title">Recommendations</span>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="smartphone"></i></span>
+        <div>
+          <div class="recommendation__title">Review your trusted devices</div>
+          <div class="recommendation__desc">Remove devices you no longer use to reduce your attack surface.</div>
+        </div>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="keyboard"></i></span>
+        <div>
+          <div class="recommendation__title">Recalibrate your typing profile</div>
+          <div class="recommendation__desc">If you've changed keyboards recently, refresh your behavioral baseline for fewer step-up prompts.</div>
+        </div>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="bell-ring"></i></span>
+        <div>
+          <div class="recommendation__title">Enable SMS alerts for step-up events</div>
+          <div class="recommendation__desc">Get notified immediately whenever behavioral verification is requested.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Transfer{% endblock %}
+{% block page_title %}Transfer Money{% endblock %}
+
+{% block content %}
+
+<div class="grid grid--2">
+  <div class="card">
+    <div class="monitoring-badge">
+      <i data-lucide="activity"></i>
+      Behavioral monitoring active on this session
+      <svg class="trust-wave" viewBox="0 0 60 20" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,10 8,10 12,4 16,16 20,6 24,10 60,10"/>
+      </svg>
+    </div>
+
+    <form method="POST" id="transferForm" novalidate>
+      <div class="field">
+        <label for="beneficiary">Beneficiary</label>
+        <div class="field__control">
+          <i data-lucide="user" class="field-icon"></i>
+          <select id="beneficiary" name="beneficiary" class="has-icon" required>
+            <option value="">Select a beneficiary</option>
+            <option value="rmehta">R. Mehta — HDFC Bank •• 4821</option>
+            <option value="skapoor">S. Kapoor — ICICI Bank •• 1190</option>
+            <option value="new">+ Add a new beneficiary</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="amount">Amount</label>
+        <div class="field__control">
+          <i data-lucide="indian-rupee" class="field-icon"></i>
+          <input type="number" id="amount" name="amount" class="has-icon num" placeholder="0.00" min="1" step="0.01" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="note">Transfer Note</label>
+        <div class="field__control">
+          <i data-lucide="pencil-line" class="field-icon"></i>
+          <input type="text" id="note" name="note" class="has-icon" placeholder="What's this for? (optional)" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="notice notice--info" style="margin-bottom: 20px;">
+        <i data-lucide="shield"></i>
+        <span>For your protection, unusual typing behavior during this transfer may trigger an additional verification step.</span>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--block">
+        <i data-lucide="send"></i>
+        Transfer Securely
+      </button>
+    </form>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <div class="trust-card" data-risk="low" id="transferTrustCard">
+      <div class="trust-card__top">
+        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Live Session Score</span>
+        <span class="trust-card__badge" data-risk="low" id="transferRiskBadge">Low Risk</span>
+      </div>
+      <div class="trust-card__score-row">
+        <div class="trust-card__score num" id="transferScoreValue">98<span>/100</span></div>
+        <div class="trust-card__wave-wrap">
+          <svg viewBox="0 0 200 46" preserveAspectRatio="none">
+            <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 200,23"/>
+          </svg>
+        </div>
+      </div>
+      <div class="trust-card__meta">
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Keystrokes analyzed</span>
+          <span class="trust-card__meta-value num" id="keystrokeCount">0</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Avg. dwell time</span>
+          <span class="trust-card__meta-value num" id="dwellAvg">—</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Status</span>
+          <span class="trust-card__meta-value" id="statusLabel">Monitoring</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title">Security Notice</span>
+      </div>
+      <div class="notice notice--success">
+        <i data-lucide="lock"></i>
+        <span>This transfer is protected by continuous behavioral authentication. If your typing pattern doesn't match your profile, we'll ask you to confirm your identity before funds move.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

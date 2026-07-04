@@ -1,21 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrustAuth</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TrustAuth{% endblock %} · TrustAuth</title>
+
+  <!-- Fonts: Inter for UI, IBM Plex Mono for numeric / data-precision elements -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <p>{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+  {% block page %}
+  <div class="app-shell">
 
-    {% block content %}{% endblock %}
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <span class="sidebar__brand-mark"><i data-lucide="shield-check"></i></span>
+        <span class="sidebar__brand-name">TrustAuth</span>
+      </div>
 
+      <nav class="sidebar__nav">
+        <span class="sidebar__section-label">Menu</span>
+        <a href="{{ url_for('main.dashboard') }}"
+           class="sidebar__link {% if request.endpoint == 'main.dashboard' %}is-active{% endif %}">
+          <i data-lucide="layout-dashboard"></i><span>Overview</span>
+        </a>
+        <a href="{{ url_for('main.accounts') }}"
+           class="sidebar__link {% if request.endpoint == 'main.accounts' %}is-active{% endif %}">
+          <i data-lucide="wallet"></i><span>Accounts</span>
+        </a>
+        <a href="{{ url_for('main.transfer') }}"
+           class="sidebar__link {% if request.endpoint == 'main.transfer' %}is-active{% endif %}">
+          <i data-lucide="arrow-left-right"></i><span>Transfer</span>
+        </a>
+        <a href="{{ url_for('main.transactions') }}"
+           class="sidebar__link {% if request.endpoint == 'main.transactions' %}is-active{% endif %}">
+          <i data-lucide="list"></i><span>Transactions</span>
+        </a>
+
+        <span class="sidebar__section-label">Protection</span>
+        <a href="{{ url_for('main.security') }}"
+           class="sidebar__link {% if request.endpoint == 'main.security' %}is-active{% endif %}">
+          <i data-lucide="fingerprint"></i><span>Security Center</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__footer">
+        <a href="{{ url_for('auth.logout') }}" class="sidebar__link sidebar__link--muted">
+          <i data-lucide="log-out"></i><span>Logout</span>
+        </a>
+        <div class="sidebar__tag">
+          <i data-lucide="activity"></i>
+          <span>Behavioral Authentication Enabled</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="main-wrap">
+      <header class="topbar">
+        <button class="topbar__menu-btn" id="sidebarToggle" aria-label="Toggle menu">
+          <i data-lucide="menu"></i>
+        </button>
+
+        <h1 class="topbar__title">{% block page_title %}Overview{% endblock %}</h1>
+
+        <div class="topbar__actions">
+          <button class="icon-btn" aria-label="Notifications">
+            <i data-lucide="bell"></i>
+            <span class="icon-btn__dot"></span>
+          </button>
+
+          <!-- Signature element, compact form: live behavioral trust pulse -->
+          <div class="trust-widget trust-widget--mini" data-risk="low" title="Behavioral Trust Score">
+            <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+              <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+            </svg>
+            <div class="trust-widget__score">
+              <span class="trust-widget__value">98</span>
+              <span class="trust-widget__label">Trust</span>
+            </div>
+          </div>
+
+          <div class="user-chip">
+            <span class="user-chip__avatar">A</span>
+            <span class="user-chip__name">Aditi Sharma</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% endblock %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

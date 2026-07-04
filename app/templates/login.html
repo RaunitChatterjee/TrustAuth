@@ -1,39 +1,91 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}Log In{% endblock %}
+{% block body_class %}auth-body{% endblock %}
 
-<h1>Login</h1>
+{% block page %}
+<div class="auth-shell">
+  <section class="auth-panel">
+    <div class="auth-brand">
+      <span class="auth-brand__mark"><i data-lucide="shield-check"></i></span>
+      <span class="auth-brand__name">TrustAuth</span>
+    </div>
 
-<form method="POST">
+    <h1 class="auth-heading">Welcome back</h1>
+    <p class="auth-subheading">Log in to continue to your account.</p>
 
-    <input
-        type="text"
-        name="username"
-        placeholder="Username"
-        required
-    >
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="notice notice--info" style="margin-bottom: 20px;">
+          <i data-lucide="info"></i>
+          <span>{{ messages[0] }}</span>
+        </div>
+      {% endif %}
+    {% endwith %}
 
-    <br><br>
+    <form method="POST" id="loginForm" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="field__control">
+          <i data-lucide="user" class="field-icon"></i>
+          <input type="text" id="username" name="username" class="has-icon" placeholder="Enter your username" autocomplete="username" required>
+        </div>
+      </div>
 
-    <input
-        type="password"
-        name="password"
-        placeholder="Password"
-        required
-    >
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="field__control">
+          <i data-lucide="lock" class="field-icon"></i>
+          <input type="password" id="password" name="password" class="has-icon" placeholder="Enter your password" autocomplete="current-password" required>
+          <button type="button" class="toggle-visibility" data-target="password" aria-label="Show password">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+      </div>
 
-    <br><br>
+      <div class="field__row">
+        <label class="checkbox">
+          <input type="checkbox" name="remember">
+          Remember me
+        </label>
+        <a href="#" class="link">Forgot password?</a>
+      </div>
 
-    <button type="submit">
-        Login
-    </button>
+      <button type="submit" class="btn btn--primary btn--block">
+        <i data-lucide="log-in"></i>
+        Secure Login
+      </button>
+    </form>
 
-</form>
+    <p class="auth-switch">
+      Don't have an account? <a href="{{ url_for('auth.register') }}" class="link">Register</a>
+    </p>
 
-<br>
+    <div class="auth-footer-note">
+      <i data-lucide="activity"></i>
+      <span>Behavioral Authentication Enabled</span>
+    </div>
+  </section>
 
-<a href="{{ url_for('auth.register') }}">
-    Register
-</a>
-
+  <section class="auth-illustration">
+    <div class="auth-illustration__panel">
+      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value" style="color:#6EE7B7;">98</span>
+          <span class="trust-widget__label" style="color:#94A3B8;">Trust</span>
+        </div>
+      </div>
+      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
+      </svg>
+      <p class="auth-illustration__caption">
+        <strong>Every session is verified continuously.</strong>
+        TrustAuth analyzes typing rhythm and interaction patterns in the background, so a stolen password alone is never enough to access an account.
+      </p>
+    </div>
+  </section>
+</div>
 {% endblock %}
