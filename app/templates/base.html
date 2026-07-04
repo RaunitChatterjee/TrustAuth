@@ -17,6 +17,20 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
 
+  <!-- ============ TOAST NOTIFICATIONS (Flask flash messages) ============ -->
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+  {% with flashed = get_flashed_messages(with_categories=true) %}
+    {% if flashed %}
+    <script>
+      window.__flashMessages = [
+        {% for category, message in flashed %}
+        { category: {{ category|tojson }}, message: {{ message|tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ];
+    </script>
+    {% endif %}
+  {% endwith %}
+
   {% block page %}
   <div class="app-shell">
 
@@ -74,10 +88,49 @@
         <h1 class="topbar__title">{% block page_title %}Overview{% endblock %}</h1>
 
         <div class="topbar__actions">
-          <button class="icon-btn" aria-label="Notifications">
-            <i data-lucide="bell"></i>
-            <span class="icon-btn__dot"></span>
-          </button>
+          <!-- ============ NOTIFICATION DROPDOWN ============ -->
+          <div class="dropdown" id="notifDropdown">
+            <button class="icon-btn" id="notifBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications">
+              <i data-lucide="bell"></i>
+              <span class="icon-btn__dot"></span>
+            </button>
+
+            <div class="dropdown__panel dropdown__panel--notif" id="notifPanel" role="menu" aria-labelledby="notifBtn" hidden>
+              <div class="dropdown__panel-header">
+                <span>Notifications</span>
+              </div>
+              <div class="dropdown__list">
+                <div class="dropdown__item dropdown__item--static" role="none">
+                  <span class="notif-icon notif-icon--success"><i data-lucide="check-circle"></i></span>
+                  <div class="dropdown__item-text">
+                    <div class="dropdown__item-title">Login verified successfully</div>
+                    <div class="dropdown__item-meta">Just now</div>
+                  </div>
+                </div>
+                <div class="dropdown__item dropdown__item--static" role="none">
+                  <span class="notif-icon notif-icon--success"><i data-lucide="shield-check"></i></span>
+                  <div class="dropdown__item-text">
+                    <div class="dropdown__item-title">Behavioral authentication active</div>
+                    <div class="dropdown__item-meta">Monitoring this session</div>
+                  </div>
+                </div>
+                <div class="dropdown__item dropdown__item--static" role="none">
+                  <span class="notif-icon notif-icon--warning"><i data-lucide="alert-triangle"></i></span>
+                  <div class="dropdown__item-text">
+                    <div class="dropdown__item-title">New login detected</div>
+                    <div class="dropdown__item-meta">Chrome on Windows · 2 hours ago</div>
+                  </div>
+                </div>
+                <div class="dropdown__item dropdown__item--static" role="none">
+                  <span class="notif-icon notif-icon--success"><i data-lucide="key-round"></i></span>
+                  <div class="dropdown__item-text">
+                    <div class="dropdown__item-title">Password updated</div>
+                    <div class="dropdown__item-meta">Yesterday</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Signature element, compact form: live behavioral trust pulse -->
           <div class="trust-widget trust-widget--mini" data-risk="low" title="Behavioral Trust Score">
@@ -90,9 +143,27 @@
             </div>
           </div>
 
-          <div class="user-chip">
-            <span class="user-chip__avatar">A</span>
-            <span class="user-chip__name">Aditi Sharma</span>
+          <!-- ============ PROFILE DROPDOWN ============ -->
+          {% set _uname = current_user.username if current_user is defined and current_user.is_authenticated else "User" %}
+          <div class="dropdown" id="profileDropdown">
+            <button class="user-chip user-chip--btn" id="profileBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="profilePanel">
+              <span class="user-chip__avatar">{{ _uname[0]|upper }}</span>
+              <span class="user-chip__name">{{ _uname }}</span>
+              <i data-lucide="chevron-down" class="user-chip__caret"></i>
+            </button>
+
+            <div class="dropdown__panel dropdown__panel--profile" id="profilePanel" role="menu" aria-labelledby="profileBtn" hidden>
+              <a href="#" class="dropdown__item" role="menuitem">
+                <i data-lucide="user"></i><span>My Profile</span>
+              </a>
+              <a href="#" class="dropdown__item" role="menuitem">
+                <i data-lucide="settings"></i><span>Settings</span>
+              </a>
+              <div class="dropdown__divider"></div>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown__item dropdown__item--danger" role="menuitem">
+                <i data-lucide="log-out"></i><span>Logout</span>
+              </a>
+            </div>
           </div>
         </div>
       </header>

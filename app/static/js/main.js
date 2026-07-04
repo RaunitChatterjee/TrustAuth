@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initKeystrokeCapture("password");   // login / register
   initKeystrokeCapture("note");       // transfer note field
   initKeystrokeCapture("amount");     // transfer amount field
+  initDropdown("notifDropdown", "notifBtn", "notifPanel");
+  initDropdown("profileDropdown", "profileBtn", "profilePanel");
+  initFlashToasts();
 });
 
 /* ---------------------------------------------------------------------- */
@@ -195,4 +198,119 @@ function applyTrustScore(score, risk) {
     scoreValueEl.textContent = score;
     if (suffix) scoreValueEl.appendChild(suffix);
   }
+}
+
+/* ==========================================================================
+   Dropdowns (notifications, profile menu)
+   Generic: wires a trigger button to a panel, toggling visibility, aria
+   state, and closing on outside click or Escape. Multiple independent
+   dropdowns on the same page each close each other when one opens.
+   ========================================================================== */
+const _activeDropdowns = [];
+
+function initDropdown(wrapperId, btnId, panelId) {
+  const wrapper = document.getElementById(wrapperId);
+  const btn = document.getElementById(btnId);
+  const panel = document.getElementById(panelId);
+  if (!wrapper || !btn || !panel) return;
+
+  const api = {
+    open() {
+      _activeDropdowns.forEach((d) => d !== api && d.close());
+      panel.hidden = false;
+      requestAnimationFrame(() => panel.classList.add("is-open"));
+      btn.setAttribute("aria-expanded", "true");
+    },
+    close() {
+      panel.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      window.setTimeout(() => {
+        if (!panel.classList.contains("is-open")) panel.hidden = true;
+      }, 160);
+    },
+    isOpen() {
+      return btn.getAttribute("aria-expanded") === "true";
+    },
+  };
+  _activeDropdowns.push(api);
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    api.isOpen() ? api.close() : api.open();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (api.isOpen() && !wrapper.contains(e.target)) {
+      api.close();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && api.isOpen()) {
+      api.close();
+      btn.focus();
+    }
+  });
+}
+
+/* ==========================================================================
+   Toast notifications — driven by Flask flash messages.
+   base.html serializes get_flashed_messages(with_categories=true) into
+   window.__flashMessages; this renders each as an auto-dismissing toast.
+   ========================================================================== */
+const TOAST_ICONS = {
+  success: "check-circle",
+  error: "x-circle",
+  danger: "x-circle",
+  warning: "alert-triangle",
+  info: "info",
+  message: "info",
+};
+
+const TOAST_DURATION_MS = 5000;
+
+function initFlashToasts() {
+  const container = document.getElementById("toastContainer");
+  if (!container || !Array.isArray(window.__flashMessages)) return;
+
+  window.__flashMessages.forEach((item, i) => {
+    window.setTimeout(() => showToast(item.message, item.category), i * 150);
+  });
+}
+
+function showToast(message, category = "info") {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const normalized = category === "danger" ? "error" : category;
+  const iconName = TOAST_ICONS[normalized] || "info";
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${normalized}`;
+  toast.setAttribute("role", "status");
+  toast.innerHTML = `
+    <span class="toast__icon"><i data-lucide="${iconName}"></i></span>
+    <span class="toast__message"></span>
+    <button class="toast__close" type="button" aria-label="Dismiss notification">
+      <i data-lucide="x"></i>
+    </button>
+  `;
+  toast.querySelector(".toast__message").textContent = message;
+
+  container.appendChild(toast);
+  if (window.lucide) lucide.createIcons();
+
+  requestAnimationFrame(() => toast.classList.add("is-visible"));
+
+  const dismiss = () => {
+    toast.classList.remove("is-visible");
+    toast.classList.add("is-leaving");
+    window.setTimeout(() => toast.remove(), 220);
+  };
+
+  const timer = window.setTimeout(dismiss, TOAST_DURATION_MS);
+  toast.querySelector(".toast__close").addEventListener("click", () => {
+    window.clearTimeout(timer);
+    dismiss();
+  });
 }
