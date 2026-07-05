@@ -16,7 +16,14 @@ def create_app():
 
     login_manager.login_view = "auth.login"
 
-    from models import User, UserSession, TypingEvent, SecurityEvent
+    from models import (
+        User,
+        UserSession,
+        TypingEvent,
+        SecurityEvent,
+        BankAccount,
+        Transaction
+    )
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -24,8 +31,10 @@ def create_app():
 
     from app.auth.routes import auth
     from app.main import main
+    from app.transfer import transfer
 
     app.register_blueprint(auth)
     app.register_blueprint(main)
+    app.register_blueprint(transfer)
 
     return app

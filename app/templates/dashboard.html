@@ -19,7 +19,7 @@
   <div class="card stat-card">
     <span class="stat-card__icon stat-card__icon--navy"><i data-lucide="wallet"></i></span>
     <span class="stat-card__label">Current Balance</span>
-    <span class="stat-card__value num">₹2,48,320.50</span>
+    <span class="stat-card__value num">₹{{ "{:,.2f}".format(account.balance) }}</span>
     <span class="stat-card__delta stat-card__delta--up"><i data-lucide="arrow-up-right"></i>2.4% this month</span>
   </div>
 
@@ -40,7 +40,7 @@
 
 <!-- Quick actions -->
 <div class="quick-actions" style="margin-bottom: 24px;">
-  <a href="{{ url_for('main.transfer') }}" class="quick-action">
+  <a href="{{ url_for('transfer.transfer_page') }}" class="quick-action">
     <span class="quick-action__icon"><i data-lucide="arrow-left-right"></i></span>
     <span class="quick-action__label">Transfer Money</span>
   </a>
@@ -73,50 +73,39 @@
           <tr><th>Merchant</th><th>Date</th><th>Status</th><th style="text-align:right;">Amount</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td>
-              <div class="tx-merchant">
-                <span class="tx-icon"><i data-lucide="shopping-bag"></i></span>
-                <div><div>Amazon</div><div class="tx-sub">Shopping</div></div>
-              </div>
-            </td>
-            <td>Jul 04, 2026</td>
-            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
-            <td style="text-align:right;" class="amount--debit">− ₹2,499.00</td>
-          </tr>
-          <tr>
-            <td>
-              <div class="tx-merchant">
-                <span class="tx-icon"><i data-lucide="zap"></i></span>
-                <div><div>Electricity Board</div><div class="tx-sub">Utilities</div></div>
-              </div>
-            </td>
-            <td>Jul 03, 2026</td>
-            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
-            <td style="text-align:right;" class="amount--debit">− ₹1,180.00</td>
-          </tr>
-          <tr>
-            <td>
-              <div class="tx-merchant">
-                <span class="tx-icon"><i data-lucide="briefcase"></i></span>
-                <div><div>Salary Credit</div><div class="tx-sub">Income</div></div>
-              </div>
-            </td>
-            <td>Jul 01, 2026</td>
-            <td><span class="pill pill--success"><i data-lucide="check"></i>Completed</span></td>
-            <td style="text-align:right;" class="amount--credit">+ ₹95,000.00</td>
-          </tr>
+          {% if transactions %}
+          {% for transaction in transactions %}
           <tr>
             <td>
               <div class="tx-merchant">
                 <span class="tx-icon"><i data-lucide="arrow-left-right"></i></span>
-                <div><div>Transfer to R. Mehta</div><div class="tx-sub">Sent</div></div>
+                <div><div>{{ transaction.recipient }}</div><div class="tx-sub">{{ transaction.transaction_type }}</div></div>
               </div>
             </td>
-            <td>Jun 29, 2026</td>
-            <td><span class="pill pill--warning"><i data-lucide="shield-alert"></i>Verified</span></td>
-            <td style="text-align:right;" class="amount--debit">− ₹12,000.00</td>
+            <td>{{ transaction.created_at.strftime("%d %b %Y") }}</td>
+            <td>
+              {% if transaction.status in ["Completed", "Success", "Verified"] %}
+              <span class="pill pill--success"><i data-lucide="check"></i>{{ transaction.status }}</span>
+              {% elif transaction.status in ["Pending", "Processing"] %}
+              <span class="pill pill--warning"><i data-lucide="shield-alert"></i>{{ transaction.status }}</span>
+              {% elif transaction.status in ["Failed", "Blocked", "Declined"] %}
+              <span class="pill pill--danger"><i data-lucide="x"></i>{{ transaction.status }}</span>
+              {% else %}
+              <span class="pill pill--warning"><i data-lucide="shield-alert"></i>{{ transaction.status }}</span>
+              {% endif %}
+            </td>
+            {% if transaction.transaction_type|lower == "credit" %}
+            <td style="text-align:right;" class="amount--credit">+ ₹{{ "{:,.2f}".format(transaction.amount) }}</td>
+            {% else %}
+            <td style="text-align:right;" class="amount--debit">− ₹{{ "{:,.2f}".format(transaction.amount) }}</td>
+            {% endif %}
           </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align:center; color: var(--text-muted);">No recent transactions.</td>
+          </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>

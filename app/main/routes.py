@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template
-from flask_login import login_required
+from flask_login import login_required, current_user
+
+from services.dashboard_service import get_dashboard_data
 
 main = Blueprint("main", __name__)
 
@@ -7,13 +9,14 @@ main = Blueprint("main", __name__)
 @main.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
 
+    dashboard_data = get_dashboard_data(current_user)
 
-@main.route("/transfer")
-@login_required
-def transfer():
-    return render_template("transfer.html")
+    return render_template(
+        "dashboard.html",
+        account=dashboard_data["account"],
+        transactions=dashboard_data["transactions"]
+    )
 
 
 @main.route("/security")

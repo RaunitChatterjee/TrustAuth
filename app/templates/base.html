@@ -51,8 +51,8 @@
            class="sidebar__link {% if request.endpoint == 'main.accounts' %}is-active{% endif %}">
           <i data-lucide="wallet"></i><span>Accounts</span>
         </a>
-        <a href="{{ url_for('main.transfer') }}"
-           class="sidebar__link {% if request.endpoint == 'main.transfer' %}is-active{% endif %}">
+        <a href="{{ url_for('transfer.transfer_page') }}"
+           class="sidebar__link {% if request.endpoint == 'transfer.transfer_page' %}is-active{% endif %}">
           <i data-lucide="arrow-left-right"></i><span>Transfer</span>
         </a>
         <a href="{{ url_for('main.transactions') }}"

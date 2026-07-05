@@ -1,11 +1,15 @@
+from random import randint
+
 from app.extensions import db, bcrypt
 from models.user import User
+from models.bank_account import BankAccount
+
+
+def generate_account_number():
+    return str(randint(100000000000, 999999999999))
 
 
 def register_user(username, email, password):
-    """
-    Register a new user.
-    """
 
     existing_user = User.query.filter(
         (User.username == username) | (User.email == email)
@@ -23,15 +27,23 @@ def register_user(username, email, password):
     )
 
     db.session.add(user)
+    db.session.flush()
+
+    account = BankAccount(
+        user_id=user.id,
+        account_number=generate_account_number(),
+        account_type="Savings",
+        balance=100000.00,
+        currency="INR"
+    )
+
+    db.session.add(account)
     db.session.commit()
 
     return user, None
 
 
 def authenticate_user(username, password):
-    """
-    Authenticate a user.
-    """
 
     user = User.query.filter_by(username=username).first()
 
