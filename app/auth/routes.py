@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
+from app.extensions import db
+from models.user_session import UserSession
 from services.auth_service import register_user, authenticate_user
 
 auth = Blueprint("auth", __name__)
@@ -55,6 +57,17 @@ def login():
             return redirect(url_for("auth.login"))
 
         login_user(user)
+
+        session = UserSession(
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            device_info=request.user_agent.string,
+            status="ACTIVE"
+        )
+
+        db.session.add(session)
+        db.session.commit()
+
         flash("Login successful!", "success")
 
         return redirect(url_for("main.dashboard"))
@@ -65,6 +78,20 @@ def login():
 @auth.route("/logout")
 @login_required
 def logout():
+
+    session = (
+        UserSession.query
+        .filter_by(
+            user_id=current_user.id,
+            status="ACTIVE"
+        )
+        .order_by(UserSession.login_time.desc())
+        .first()
+    )
+
+    if session:
+        session.status = "ENDED"
+        db.session.commit()
 
     logout_user()
 

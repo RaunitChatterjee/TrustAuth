@@ -117,16 +117,34 @@ function initKeystrokeCapture(fieldId) {
 function onKeystrokeEvent(fieldId, events) {
   updateKeystrokeMeta(events);
 
-  // Example of how this would talk to a real backend:
-  //
-  // fetch("/api/behavior-event", {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ field: fieldId, events: events.slice(-1) }),
-  // })
-  //   .then((res) => res.json())
-  //   .then((data) => applyTrustScore(data.score, data.risk));
+  const latest = events[events.length - 1];
 
+  fetch("/api/typing", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      field_name: fieldId,
+      key_pressed: latest.key,
+      sequence_number: events.length,
+      key_down_timestamp: latest.timestamp - latest.dwell,
+      key_up_timestamp: latest.timestamp,
+      dwell_time: latest.dwell,
+      flight_time: latest.flight,
+    }),
+  })
+    .then((res) => res.json())
+    .then((response) => {
+      if (!response.success) {
+        console.error(response.message);
+      }
+    })
+    .catch((err) => console.error(err));
+
+  // Existing UI simulation left intact — will be swapped for real
+  // backend-driven scores once /api/typing returns a trained model's output.
   const { score, risk } = simulateScoreFromEvents(events);
   applyTrustScore(score, risk);
 }
