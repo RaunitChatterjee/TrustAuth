@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Transfer{% endblock %}
+{% block body_class %}otp-body{% endblock %}
+
+{% block head %}
+<style>
+  /* ==========================================================================
+     Step-Up Authentication (verify_transfer_otp.html) — page-scoped styles.
+     Reuses design tokens and component classes already defined in
+     static/css/style.css (--navy, --emerald, --orange, --red, --border,
+     --surface, --r-md/--r-lg, --shadow-sm/md/lg, .card, .btn, .notice,
+     .auth-footer-note) so this page stays visually consistent with the
+     rest of TrustAuth without touching the shared stylesheet.
+     ========================================================================== */
+
+  .otp-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: var(--bg);
+  }
+
+  .otp-wrap {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .otp-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .otp-brand__mark {
+    width: 32px; height: 32px;
+    border-radius: var(--r-sm);
+    background: var(--navy);
+    color: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .otp-brand__mark svg { width: 17px; height: 17px; }
+  .otp-brand__name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; color: var(--navy); }
+
+  /* ---------- Amber warning banner ---------- */
+  .otp-alert-banner {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--orange-soft);
+    border: 1px solid #FDE68A;
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .otp-alert-banner svg {
+    width: 20px; height: 20px;
+    color: #B45309;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .otp-alert-banner__title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #92400E;
+    margin-bottom: 3px;
+  }
+  .otp-alert-banner__desc {
+    font-size: 12.5px;
+    color: #92400E;
+    line-height: 1.5;
+  }
+
+  /* ---------- Flash messages (extra variants not in the shared sheet) ---------- */
+  .otp-flashes { display: flex; flex-direction: column; gap: 10px; }
+  .notice--warning { background: var(--orange-soft); border-color: #FDE68A; color: #92400E; }
+  .notice--danger { background: var(--red-soft); border-color: #FECACA; color: #B91C1C; }
+
+  /* ---------- Card ---------- */
+  .otp-card { padding: 32px 28px; }
+
+  .otp-card__top {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  .otp-shield {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: var(--shadow-md);
+  }
+  .otp-shield svg { width: 26px; height: 26px; }
+  .otp-heading {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .otp-subheading {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ---------- Transaction summary ---------- */
+  .otp-summary {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .otp-summary__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13.5px;
+  }
+  .otp-summary__row span { color: var(--text-muted); font-weight: 500; }
+  .otp-summary__row strong {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+  }
+
+  /* ---------- OTP input boxes ---------- */
+  .otp-input-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .otp-box {
+    width: 46px;
+    height: 54px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface-alt);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .otp-box:focus {
+    outline: none;
+    border-color: var(--navy);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+  }
+  .otp-box.is-filled { border-color: #94A3B8; }
+  .otp-box.is-error { border-color: var(--red); background: var(--red-soft); }
+  .otp-box:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---------- Countdown ---------- */
+  .otp-countdown {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 22px;
+  }
+  .otp-countdown__value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 15px;
+    margin-left: 4px;
+  }
+  .otp-countdown.is-expired .otp-countdown__value { color: var(--red); }
+  .otp-countdown__expired-msg {
+    display: none;
+    color: var(--red);
+    font-weight: 600;
+  }
+  .otp-countdown.is-expired .otp-countdown__label,
+  .otp-countdown.is-expired .otp-countdown__value {
+    display: none;
+  }
+  .otp-countdown.is-expired .otp-countdown__expired-msg { display: inline; }
+
+  /* ---------- Actions ---------- */
+  .otp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .otp-resend {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+  .otp-resend-btn {
+    font-weight: 700;
+    color: var(--navy);
+    margin-left: 4px;
+  }
+  .otp-resend-btn:disabled {
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+  .otp-resend-btn:not(:disabled):hover { text-decoration: underline; }
+
+  @media (max-width: 420px) {
+    .otp-box { width: 40px; height: 48px; font-size: 19px; }
+    .otp-input-group { gap: 7px; }
+    .otp-card { padding: 26px 18px; }
+  }
+</style>
+{% endblock %}
+
+{% block page %}
+<div class="otp-shell">
+  <div class="otp-wrap">
+
+    <div class="otp-brand">
+      <span class="otp-brand__mark"><i data-lucide="shield-check"></i></span>
+      <span class="otp-brand__name">TrustAuth</span>
+    </div>
+
+    <!-- ============ Step-up warning banner ============ -->
+    <div class="otp-alert-banner">
+      <i data-lucide="triangle-alert"></i>
+      <div>
+        <div class="otp-alert-banner__title">Step-Up Authentication Triggered</div>
+        <div class="otp-alert-banner__desc">
+          TrustAuth detected behaviour different from your enrolled typing profile.
+          This additional verification protects your account from Account Takeover attacks.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Flash messages ============ -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="otp-flashes">
+        {% for category, message in messages %}
+          {% if category == "success" %}
+          <div class="notice notice--success"><i data-lucide="check-circle"></i><span>{{ message }}</span></div>
+          {% elif category == "warning" %}
+          <div class="notice notice--warning"><i data-lucide="alert-triangle"></i><span>{{ message }}</span></div>
+          {% elif category in ["error", "danger"] %}
+          <div class="notice notice--danger"><i data-lucide="x-circle"></i><span>{{ message }}</span></div>
+          {% else %}
+          <div class="notice notice--info"><i data-lucide="info"></i><span>{{ message }}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- ============ OTP verification card ============ -->
+    <div class="card otp-card">
+      <div class="otp-card__top">
+        <span class="otp-shield"><i data-lucide="shield-check"></i></span>
+        <h1 class="otp-heading">Additional Verification Required</h1>
+        <p class="otp-subheading">
+          We've detected unusual behavioural activity.<br>
+          Please verify this transfer using the OTP sent for verification.
+        </p>
+      </div>
+
+      {% if beneficiary or amount or note %}
+      <div class="otp-summary">
+        {% if beneficiary %}
+        <div class="otp-summary__row"><span>Beneficiary</span><strong>{{ beneficiary }}</strong></div>
+        {% endif %}
+        {% if amount %}
+        <div class="otp-summary__row"><span>Amount</span><strong>₹{{ amount }}</strong></div>
+        {% endif %}
+        {% if note %}
+        <div class="otp-summary__row"><span>Reference</span><strong>{{ note }}</strong></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <form method="POST" id="otpForm" novalidate>
+        <input type="hidden" name="otp" id="otpHidden">
+
+        <div class="otp-input-group" id="otpInputGroup">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="0" autocomplete="one-time-code">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="1">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="2">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="3">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="4">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="5">
+        </div>
+
+        <div class="otp-countdown" id="otpCountdown">
+          <span class="otp-countdown__label">OTP expires in</span>
+          <span class="otp-countdown__value" id="otpCountdownValue">04:59</span>
+          <span class="otp-countdown__expired-msg">OTP expired.</span>
+        </div>
+
+        <div class="otp-actions">
+          <button type="submit" class="btn btn--primary btn--block" id="verifyBtn" disabled>
+            <i data-lucide="shield-check"></i>
+            Verify Transfer
+          </button>
+          <a href="{{ url_for('main.dashboard') }}" class="btn btn--ghost btn--block" id="cancelBtn">
+            <i data-lucide="x"></i>
+            Cancel Transfer
+          </a>
+        </div>
+
+        <div class="otp-resend">
+          Didn't receive OTP?
+          <button type="button" class="otp-resend-btn" id="resendBtn" disabled>Resend OTP (0:30)</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="auth-footer-note" style="justify-content: center;">
+      <i data-lucide="shield"></i>
+      <span>Protected by TrustAuth Behavioural Biometrics · Continuous Authentication Active</span>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    /* ============ OTP box behaviour: auto-focus, auto-advance,
+       backspace navigation, paste support ============ */
+    const boxes = Array.from(document.querySelectorAll(".otp-box"));
+    const hiddenInput = document.getElementById("otpHidden");
+    const verifyBtn = document.getElementById("verifyBtn");
+
+    function syncHiddenValue() {
+      hiddenInput.value = boxes.map((b) => b.value).join("");
+    }
+
+    function updateVerifyState() {
+      const filled = boxes.every((b) => b.value.length === 1);
+      const expired = document.getElementById("otpCountdown").classList.contains("is-expired");
+      verifyBtn.disabled = !filled || expired;
+    }
+
+    boxes.forEach((box, i) => {
+      box.addEventListener("input", () => {
+        box.value = box.value.replace(/[^0-9]/g, "").slice(0, 1);
+        box.classList.toggle("is-filled", box.value.length === 1);
+        if (box.value && i < boxes.length - 1) {
+          boxes[i + 1].focus();
+        }
+        syncHiddenValue();
+        updateVerifyState();
+      });
+
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace") {
+          if (!box.value && i > 0) {
+            boxes[i - 1].focus();
+            boxes[i - 1].value = "";
+            boxes[i - 1].classList.remove("is-filled");
+            syncHiddenValue();
+            updateVerifyState();
+          }
+        } else if (e.key === "ArrowLeft" && i > 0) {
+          boxes[i - 1].focus();
+        } else if (e.key === "ArrowRight" && i < boxes.length - 1) {
+          boxes[i + 1].focus();
+        }
+      });
+
+      box.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData)
+          .getData("text")
+          .replace(/[^0-9]/g, "")
+          .slice(0, boxes.length);
+        if (!pasted) return;
+
+        pasted.split("").forEach((digit, idx) => {
+          if (boxes[idx]) {
+            boxes[idx].value = digit;
+            boxes[idx].classList.add("is-filled");
+          }
+        });
+
+        const nextEmpty = boxes.findIndex((b) => !b.value);
+        (nextEmpty === -1 ? boxes[boxes.length - 1] : boxes[nextEmpty]).focus();
+
+        syncHiddenValue();
+        updateVerifyState();
+      });
+    });
+
+    if (boxes[0]) boxes[0].focus();
+
+    /* ============ OTP expiry countdown (04:59) ============ */
+    let secondsLeft = 4 * 60 + 59;
+    const countdownEl = document.getElementById("otpCountdown");
+    const countdownValueEl = document.getElementById("otpCountdownValue");
+
+    function renderCountdown() {
+      const m = Math.floor(secondsLeft / 60).toString().padStart(2, "0");
+      const s = (secondsLeft % 60).toString().padStart(2, "0");
+      countdownValueEl.textContent = `${m}:${s}`;
+    }
+
+    const countdownTimer = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        secondsLeft = 0;
+        renderCountdown();
+        countdownEl.classList.add("is-expired");
+        boxes.forEach((b) => (b.disabled = true));
+        updateVerifyState();
+        clearInterval(countdownTimer);
+        return;
+      }
+      renderCountdown();
+    }, 1000);
+
+    renderCountdown();
+    updateVerifyState();
+
+    /* ============ Resend OTP cooldown (30s) ============ */
+    let resendSeconds = 30;
+    const resendBtn = document.getElementById("resendBtn");
+
+    function renderResend() {
+      resendBtn.textContent = `Resend OTP (0:${resendSeconds.toString().padStart(2, "0")})`;
+    }
+
+    const resendTimer = setInterval(() => {
+      resendSeconds -= 1;
+      if (resendSeconds <= 0) {
+        clearInterval(resendTimer);
+        resendBtn.disabled = false;
+        resendBtn.textContent = "Resend OTP";
+        return;
+      }
+      renderResend();
+    }, 1000);
+
+    resendBtn.addEventListener("click", () => {
+      if (resendBtn.disabled) return;
+
+      // No backend call yet — resets the local countdowns only.
+      boxes.forEach((b) => {
+        b.value = "";
+        b.disabled = false;
+        b.classList.remove("is-filled", "is-error");
+      });
+      syncHiddenValue();
+      if (boxes[0]) boxes[0].focus();
+
+      secondsLeft = 4 * 60 + 59;
+      countdownEl.classList.remove("is-expired");
+      renderCountdown();
+      updateVerifyState();
+
+      resendSeconds = 30;
+      resendBtn.disabled = true;
+      renderResend();
+
+      if (typeof showToast === "function") {
+        showToast("A new OTP has been sent.", "success");
+      }
+    });
+  })();
+</script>
+{% endblock %}

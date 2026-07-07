@@ -2,9 +2,18 @@ from datetime import datetime
 
 from app.extensions import db
 from models.behavior_profile import BehaviorProfile
-from services.feature_extraction_service import extract_features_for_session
 
-MINIMUM_ENROLLMENT_KEYS = 100
+from services.feature_extraction_service import (
+    extract_features_for_session
+)
+
+from services.security_event_service import (
+    log_enrollment_completed
+)
+
+# Development threshold.
+# Change back to 100 before the final project submission.
+MINIMUM_ENROLLMENT_KEYS = 20
 
 
 def get_behavior_profile(user_id):
@@ -32,14 +41,13 @@ def is_user_enrolled(user_id):
 
 def enroll_user(user_id, session_id):
     """
-    Compatibility function.
-
-    This keeps the existing routes.py and trust_engine.py
-    working while we finish integrating the backend.
+    Create the user's behavioral profile once enough
+    keystrokes have been collected.
     """
 
     profile = get_behavior_profile(user_id)
 
+    # Already enrolled
     if profile:
         return profile
 
@@ -65,5 +73,18 @@ def enroll_user(user_id, session_id):
 
     db.session.add(profile)
     db.session.commit()
+
+    # -----------------------------------------
+    # Security Audit Log
+    # -----------------------------------------
+
+    log_enrollment_completed(user_id)
+
+    print("\n" + "=" * 60)
+    print("USER ENROLLED")
+    print("=" * 60)
+    print(f"User ID: {user_id}")
+    print(f"Keystrokes: {features['total_keys']}")
+    print("=" * 60 + "\n")
 
     return profile

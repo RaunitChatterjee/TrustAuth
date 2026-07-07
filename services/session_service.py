@@ -18,7 +18,9 @@ def get_active_session(user_id):
             user_id=user_id,
             status="ACTIVE"
         )
-        .order_by(UserSession.login_time.desc())
+        .order_by(
+            UserSession.login_time.desc()
+        )
         .first()
     )
 
@@ -34,11 +36,50 @@ def update_last_activity(session):
 
 def end_session(session):
     """
-    End a session.
+    End a session normally.
     """
 
     session.status = "ENDED"
     session.logout_time = datetime.utcnow()
+
+    db.session.commit()
+
+
+def terminate_active_session(user_id):
+    """
+    Immediately terminate the user's
+    currently active session.
+    Used when suspicious activity or
+    Account Takeover is detected.
+    """
+
+    session = get_active_session(user_id)
+
+    if session is None:
+        return False
+
+    session.status = "TERMINATED"
+    session.logout_time = datetime.utcnow()
+
+    db.session.commit()
+
+    return True
+
+
+def end_all_active_sessions(user_id):
+    """
+    End every active session for a user.
+    Useful when logging in from a new device.
+    """
+
+    sessions = UserSession.query.filter_by(
+        user_id=user_id,
+        status="ACTIVE"
+    ).all()
+
+    for session in sessions:
+        session.status = "ENDED"
+        session.logout_time = datetime.utcnow()
 
     db.session.commit()
 

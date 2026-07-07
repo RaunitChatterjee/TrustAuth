@@ -42,8 +42,6 @@ def verify(user_id, session_id):
 
         "trust_score": trust["trust_score"],
 
-        "risk_level": trust["risk_level"],
-
         "keys_collected": current_features["total_keys"]
 
     }
