@@ -1,6 +1,5 @@
 from services.enrollment_service import enroll
-from services.verification_service import verify
-from services.risk_engine import evaluate_risk
+from services.trust_engine import evaluate_session
 from services.auth_decision_service import make_authentication_decision
 
 from services.security_event_service import (
@@ -39,8 +38,8 @@ def evaluate_if_ready(user_id, session):
         session.id
     )
 
-    # Verification
-    verification = verify(
+    # Trust Engine performs verification + risk evaluation
+    verification = evaluate_session(
         user_id,
         session.id
     )
@@ -48,35 +47,31 @@ def evaluate_if_ready(user_id, session):
     if verification is None:
         return None
 
-    # Risk Evaluation
-    risk = evaluate_risk(
-        verification["trust_score"]
-    )
-
-    # Banking Decision
+    # Authentication decision
     decision = make_authentication_decision(
-        risk
+        verification
     )
 
     trust_score = verification["trust_score"]
+    risk_level = verification["risk_level"]
 
     # -------- Security Response -------- #
 
-    if risk["risk_level"] == "LOW":
+    if risk_level == "LOW":
 
         log_continuous_auth_success(
             user_id,
             trust_score
         )
 
-    elif risk["risk_level"] == "MEDIUM":
+    elif risk_level == "MEDIUM":
 
         log_step_up_required(
             user_id,
             trust_score
         )
 
-    elif risk["risk_level"] in ("HIGH", "CRITICAL"):
+    elif risk_level in ("HIGH", "CRITICAL"):
 
         log_account_takeover_detected(
             user_id,
@@ -89,6 +84,5 @@ def evaluate_if_ready(user_id, session):
 
     return {
         **verification,
-        **risk,
         **decision
     }

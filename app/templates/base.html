@@ -38,26 +38,21 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar__brand">
         <span class="sidebar__brand-mark"><i data-lucide="shield-check"></i></span>
-        <span class="sidebar__brand-name">TrustAuth</span>
+        <div class="sidebar__brand-text">
+          <span class="sidebar__brand-name">TrustAuth</span>
+          <span class="sidebar__brand-subtitle">Behavioral Biometrics Platform</span>
+        </div>
       </div>
 
       <nav class="sidebar__nav">
         <span class="sidebar__section-label">Menu</span>
         <a href="{{ url_for('main.dashboard') }}"
            class="sidebar__link {% if request.endpoint == 'main.dashboard' %}is-active{% endif %}">
-          <i data-lucide="layout-dashboard"></i><span>Overview</span>
-        </a>
-        <a href="{{ url_for('main.accounts') }}"
-           class="sidebar__link {% if request.endpoint == 'main.accounts' %}is-active{% endif %}">
-          <i data-lucide="wallet"></i><span>Accounts</span>
+          <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
         </a>
         <a href="{{ url_for('transfer.transfer_page') }}"
            class="sidebar__link {% if request.endpoint == 'transfer.transfer_page' %}is-active{% endif %}">
           <i data-lucide="arrow-left-right"></i><span>Transfer</span>
-        </a>
-        <a href="{{ url_for('main.transactions') }}"
-           class="sidebar__link {% if request.endpoint == 'main.transactions' %}is-active{% endif %}">
-          <i data-lucide="list"></i><span>Transactions</span>
         </a>
 
         <span class="sidebar__section-label">Protection</span>
@@ -71,9 +66,9 @@
         <a href="{{ url_for('auth.logout') }}" class="sidebar__link sidebar__link--muted">
           <i data-lucide="log-out"></i><span>Logout</span>
         </a>
-        <div class="sidebar__tag">
+        <div class="enterprise-tag">
           <i data-lucide="activity"></i>
-          <span>Behavioral Authentication Enabled</span>
+          <span>Continuous Authentication Active</span>
         </div>
       </div>
     </aside>
@@ -85,9 +80,25 @@
           <i data-lucide="menu"></i>
         </button>
 
+        <div class="topbar__brand">
+          <span class="topbar__brand-mark"><i data-lucide="shield-check"></i></span>
+          <span class="topbar__brand-name">TrustAuth</span>
+        </div>
+        <span class="topbar__divider" aria-hidden="true"></span>
+
         <h1 class="topbar__title">{% block page_title %}Overview{% endblock %}</h1>
 
         <div class="topbar__actions">
+          <!-- Session Status — reflects that this page is behind a live,
+               authenticated session (all routes here require login).
+               Placeholder-honest: not wired to a risk-aware endpoint yet;
+               will be upgraded to reflect GET /api/trust's risk_level once
+               individual pages are redesigned. -->
+          <div class="chip chip--success" id="sessionStatusChip" title="Session Status">
+            <i data-lucide="circle-dot"></i>
+            <span>Session Active</span>
+          </div>
+
           <!-- ============ NOTIFICATION DROPDOWN ============ -->
           <div class="dropdown" id="notifDropdown">
             <button class="icon-btn" id="notifBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="notifPanel" aria-label="Notifications">

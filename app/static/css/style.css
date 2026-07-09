@@ -1,35 +1,84 @@
 /* ==========================================================================
-   TrustAuth — Design Tokens
+   TrustAuth — Global Design System
+   ==========================================================================
+   This file is organized as a component library. Every section below is
+   reusable across all six v1.0 pages (Login, Register, Dashboard, Transfer,
+   OTP Verification, Security Center). No page-specific overrides live here —
+   page templates only ever compose these classes, never redefine them.
+
+   IMPORTANT — read before editing:
+   All existing selectors from the previous stylesheet are preserved
+   unchanged in name and structure, so no template needs to change class
+   names when pages are redesigned next. Only token VALUES and a set of new,
+   additive components have been introduced in this pass. Because the six
+   live pages already reference several of these shared classes (.trust-card,
+   .trust-widget, .pill, .timeline-*), updating the underlying design tokens
+   (specifically the risk color system) will visibly change their current
+   appearance immediately — this is expected and intentional: it is the
+   foundation the next page-by-page redesign will build on, not a redesign
+   of those pages itself.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. GLOBAL VARIABLES / COLOR SYSTEM
    ========================================================================== */
 :root {
-  /* Color */
+  /* ---------- Brand & surface ---------- */
   --bg: #F8FAFC;
   --surface: #FFFFFF;
   --surface-alt: #F1F5F9;
   --navy: #0F172A;
   --navy-light: #1E293B;
   --navy-soft: #E2E8F0;
+  --border: #E2E8F0;
+  --text: #0F172A;
+  --text-muted: #64748B;
+  --text-faint: #94A3B8;
+
+  /* ---------- Legacy semantic colors ----------
+     Kept for non-risk decorative/status uses already in the live pages
+     (e.g. stat-card icon tints, income/spending indicators, generic
+     success/info notices). These are NOT the risk scale — see below. */
   --emerald: #10B981;
   --emerald-soft: #D1FAE5;
   --orange: #F59E0B;
   --orange-soft: #FEF3C7;
   --red: #EF4444;
   --red-soft: #FEE2E2;
-  --border: #E2E8F0;
-  --text: #0F172A;
-  --text-muted: #64748B;
-  --text-faint: #94A3B8;
 
-  /* Type */
+  /* ---------- Risk scale (canonical, 4-tier) ----------
+     This is the ONLY color vocabulary for risk/severity anywhere in the
+     product: Trust Score, Fraud Score, Risk Badges, Security Events,
+     Security Timeline, Transfer Risk, OTP Verification. LOW/MEDIUM/HIGH/
+     CRITICAL are four visually distinct colors — HIGH is never merged
+     with MEDIUM or CRITICAL. */
+  --risk-low: #10B981;        /* green  */
+  --risk-low-soft: #D1FAE5;
+  --risk-low-text: #047857;
+
+  --risk-medium: #EAB308;     /* yellow */
+  --risk-medium-soft: #FEF9C3;
+  --risk-medium-text: #854D0E;
+
+  --risk-high: #F97316;       /* orange */
+  --risk-high-soft: #FFEDD5;
+  --risk-high-text: #9A3412;
+
+  --risk-critical: #EF4444;   /* red    */
+  --risk-critical-soft: #FEE2E2;
+  --risk-critical-text: #B91C1C;
+
+  /* ---------- Type ---------- */
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  /* Radius */
+  /* ---------- Radius ---------- */
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 18px;
 
-  /* Shadow */
+  /* ---------- Shadow ---------- */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
   --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.04);
@@ -37,6 +86,9 @@
   --sidebar-w: 248px;
 }
 
+/* ==========================================================================
+   2. BASE / RESET
+   ========================================================================== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -60,17 +112,47 @@ input, select { font-family: inherit; }
   border-radius: 4px;
 }
 
+/* ---------- 3. TYPOGRAPHY ----------
+   Inter for all UI text. IBM Plex Mono is reserved exclusively for figures
+   that must read as precise/measured: balances, scores, OTP digits,
+   timestamps in tables. Apply `.num` to any such value. */
 .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.01em; }
+
+
 /* ==========================================================================
-   App Shell
+   4. LAYOUT — App Shell
    ========================================================================== */
 .app-shell {
   display: flex;
   min-height: 100vh;
 }
 
-/* ---------- Sidebar ---------- */
+.main-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  padding: 28px 32px 56px;
+  max-width: 1240px;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+.grid--2 { grid-template-columns: 2fr 1fr; }
+.grid--3 { grid-template-columns: repeat(3, 1fr); }
+
+
+/* ==========================================================================
+   5. SIDEBAR
+   ========================================================================== */
 .sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
@@ -95,16 +177,24 @@ input, select { font-family: inherit; }
 .sidebar__brand-mark {
   width: 32px; height: 32px;
   border-radius: var(--r-sm);
-  background: var(--emerald);
+  background: var(--risk-low);
   color: var(--navy);
   display: flex; align-items: center; justify-content: center;
 }
 .sidebar__brand-mark svg { width: 18px; height: 18px; }
+.sidebar__brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .sidebar__brand-name {
   font-weight: 700;
   font-size: 17px;
   letter-spacing: -0.01em;
   color: #fff;
+}
+.sidebar__brand-subtitle {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #6EE7B7;
+  letter-spacing: 0.01em;
+  margin-top: 1px;
 }
 
 .sidebar__nav {
@@ -142,7 +232,7 @@ input, select { font-family: inherit; }
   background: rgba(16, 185, 129, 0.14);
   color: #fff;
 }
-.sidebar__link.is-active svg { color: var(--emerald); }
+.sidebar__link.is-active svg { color: var(--risk-low); }
 
 .sidebar__footer {
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -167,14 +257,37 @@ input, select { font-family: inherit; }
 }
 .sidebar__tag svg { width: 14px; height: 14px; flex-shrink: 0; }
 
-/* ---------- Main / Topbar ---------- */
-.main-wrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+/* ---------- Enterprise branding tag (formal, reusable) ----------
+   Consolidates the sidebar tag and auth footer note into one component so
+   "Behavioral Biometrics Platform" / "Continuous Authentication Active"
+   messaging reads identically wherever it appears. `.sidebar__tag` and
+   `.auth-footer-note` above remain valid (still used by live pages) — this
+   is the version future page redesigns should adopt. */
+.enterprise-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #6EE7B7;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+}
+.enterprise-tag svg { width: 14px; height: 14px; flex-shrink: 0; }
+/* Light-surface variant, for use outside the navy sidebar/auth panel */
+.enterprise-tag--on-light {
+  color: var(--risk-low-text);
+  background: var(--risk-low-soft);
+  border-color: #A7F3D0;
 }
 
+
+/* ==========================================================================
+   6. NAVBAR / TOPBAR
+   ========================================================================== */
 .topbar {
   display: flex;
   align-items: center;
@@ -194,6 +307,34 @@ input, select { font-family: inherit; }
   padding: 6px;
 }
 .topbar__menu-btn svg { width: 20px; height: 20px; }
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.topbar__brand-mark {
+  width: 26px; height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--navy);
+  color: var(--risk-low);
+  display: flex; align-items: center; justify-content: center;
+}
+.topbar__brand-mark svg { width: 14px; height: 14px; }
+.topbar__brand-name {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+  white-space: nowrap;
+}
+.topbar__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
 
 .topbar__title {
   font-size: 20px;
@@ -226,7 +367,7 @@ input, select { font-family: inherit; }
   top: 8px; right: 9px;
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--risk-critical);
   border: 1.5px solid var(--surface);
 }
 
@@ -240,6 +381,7 @@ input, select { font-family: inherit; }
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
+.user-chip--btn { cursor: pointer; }
 .user-chip__avatar {
   width: 28px; height: 28px;
   border-radius: 50%;
@@ -254,149 +396,17 @@ input, select { font-family: inherit; }
   font-weight: 600;
   white-space: nowrap;
 }
-
-.content {
-  padding: 28px 32px 56px;
-  max-width: 1240px;
-  width: 100%;
-}
-
-/* ==========================================================================
-   Signature element — TrustPulse (behavioral trust widget)
-   ========================================================================== */
-.trust-widget {
-  --pulse-color: var(--emerald);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-.trust-widget[data-risk="medium"] { --pulse-color: var(--orange); }
-.trust-widget[data-risk="high"]   { --pulse-color: var(--red); }
-
-.trust-widget--mini {
-  padding: 6px 12px;
-  border-radius: 999px;
-}
-.trust-widget--mini .trust-wave { width: 56px; height: 20px; }
-.trust-widget__score { display: flex; flex-direction: column; line-height: 1.05; }
-.trust-widget__value {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--pulse-color);
-}
-.trust-widget__label {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.user-chip__caret {
+  width: 14px; height: 14px;
   color: var(--text-faint);
+  margin-left: 2px;
+  transition: transform 0.15s ease;
 }
+.user-chip--btn[aria-expanded="true"] .user-chip__caret { transform: rotate(180deg); }
 
-.trust-wave__path {
-  fill: none;
-  stroke: var(--pulse-color);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  animation: pulse-flow 2.4s ease-in-out infinite;
-}
-@keyframes pulse-flow {
-  0%, 100% { stroke-dashoffset: 0; opacity: 0.9; }
-  50% { stroke-dashoffset: -4; opacity: 1; }
-}
-
-/* Full-size trust card, used in Dashboard + Security Center */
-.trust-card {
-  border-radius: var(--r-lg);
-  background: var(--navy);
-  color: #fff;
-  padding: 24px 26px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-}
-.trust-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 85% 0%, rgba(16,185,129,0.25), transparent 55%);
-  pointer-events: none;
-}
-.trust-card__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 18px;
-  position: relative;
-}
-.trust-card__eyebrow {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #94A3B8;
-  display: flex; align-items: center; gap: 6px;
-}
-.trust-card__eyebrow svg { width: 13px; height: 13px; color: var(--emerald); }
-
-.trust-card__badge {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(16,185,129,0.15);
-  color: #6EE7B7;
-  border: 1px solid rgba(16,185,129,0.3);
-}
-.trust-card__badge[data-risk="medium"] { background: rgba(245,158,11,0.15); color: #FCD34D; border-color: rgba(245,158,11,0.3); }
-.trust-card__badge[data-risk="high"] { background: rgba(239,68,68,0.15); color: #FCA5A5; border-color: rgba(239,68,68,0.3); }
-
-.trust-card__score-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 18px;
-  position: relative;
-}
-.trust-card__score {
-  font-family: var(--font-mono);
-  font-size: 44px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-.trust-card__score span { font-size: 18px; color: #94A3B8; font-weight: 500; }
-
-.trust-card__wave-wrap { flex: 1; height: 46px; }
-.trust-card__wave-wrap svg { width: 100%; height: 100%; }
-.trust-card__wave-wrap .trust-wave__path { stroke: #34D399; }
-
-.trust-card__meta {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-}
-.trust-card__meta-item span { display: block; }
-.trust-card__meta-label {
-  font-size: 11px;
-  color: #94A3B8;
-  margin-bottom: 3px;
-}
-.trust-card__meta-value {
-  font-size: 13.5px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-}
 
 /* ==========================================================================
-   Cards / generic surfaces
+   7. REUSABLE CARDS
    ========================================================================== */
 .card {
   background: var(--surface);
@@ -423,14 +433,33 @@ input, select { font-family: inherit; }
 }
 .card__link svg { width: 14px; height: 14px; }
 
-.grid {
-  display: grid;
-  gap: 20px;
+/* ---------- Dark feature card ----------
+   Reserved exclusively for the two "live status" widgets: Trust Score and
+   Fraud Score. Visually distinct from `.card` on purpose, so a person's
+   eye finds live-computed status immediately on any page. */
+.card--feature {
+  border-radius: var(--r-lg);
+  background: var(--navy);
+  color: #fff;
+  padding: 24px 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
 }
-.grid--3 { grid-template-columns: repeat(3, 1fr); }
-.grid--2 { grid-template-columns: 2fr 1fr; }
+.card--feature::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 0%, rgba(16,185,129,0.25), transparent 55%);
+  pointer-events: none;
+}
 
-/* ---------- Stat cards ---------- */
+/* ---------- Compact card ----------
+   Same visual language, tighter padding — used for stat tiles and small
+   summary blocks. */
+.card--compact { padding: 16px 18px; }
+
+/* ---------- Stat cards (compact card content pattern) ---------- */
 .stat-card {
   display: flex;
   flex-direction: column;
@@ -452,78 +481,11 @@ input, select { font-family: inherit; }
 .stat-card__delta { font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
 .stat-card__delta svg { width: 13px; height: 13px; }
 .stat-card__delta--up { color: #059669; }
-.stat-card__delta--down { color: var(--red); }
+.stat-card__delta--down { color: var(--risk-critical); }
 
-/* ---------- Tables ---------- */
-.table { width: 100%; border-collapse: collapse; }
-.table th {
-  text-align: left;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  padding: 0 10px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.table td {
-  padding: 13px 10px;
-  font-size: 13.5px;
-  border-bottom: 1px solid var(--surface-alt);
-  vertical-align: middle;
-}
-.table tr:last-child td { border-bottom: none; }
-
-.tx-merchant { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-.tx-icon {
-  width: 34px; height: 34px; border-radius: var(--r-sm);
-  background: var(--surface-alt);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--navy);
-  flex-shrink: 0;
-}
-.tx-icon svg { width: 16px; height: 16px; }
-.tx-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
-
-.amount--debit { color: var(--text); font-family: var(--font-mono); font-weight: 600; }
-.amount--credit { color: #059669; font-family: var(--font-mono); font-weight: 600; }
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 999px;
-}
-.pill--success { background: var(--emerald-soft); color: #047857; }
-.pill--warning { background: var(--orange-soft); color: #B45309; }
-.pill--danger  { background: var(--red-soft); color: #B91C1C; }
-.pill svg { width: 12px; height: 12px; }
-
-/* ---------- Quick actions ---------- */
-.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.quick-action {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-.quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--text-faint); }
-.quick-action__icon {
-  width: 36px; height: 36px; border-radius: var(--r-sm);
-  background: var(--navy); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-}
-.quick-action__icon svg { width: 17px; height: 17px; }
-.quick-action__label { font-size: 13.5px; font-weight: 600; }
 
 /* ==========================================================================
-   Buttons / Forms
+   8. BUTTONS
    ========================================================================== */
 .btn {
   display: inline-flex;
@@ -540,10 +502,20 @@ input, select { font-family: inherit; }
 .btn--primary { background: var(--navy); color: #fff; box-shadow: var(--shadow-sm); }
 .btn--primary:hover { background: var(--navy-light); }
 .btn--primary:active { transform: scale(0.98); }
+.btn--primary:disabled {
+  background: var(--text-faint);
+  cursor: not-allowed;
+  transform: none;
+}
 .btn--block { width: 100%; }
 .btn--ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
 .btn--ghost:hover { color: var(--text); border-color: var(--text-faint); }
+.btn--ghost:disabled { color: var(--text-faint); cursor: not-allowed; }
 
+
+/* ==========================================================================
+   9. FORMS
+   ========================================================================== */
 .field { margin-bottom: 18px; }
 .field label {
   display: block;
@@ -593,295 +565,115 @@ input, select { font-family: inherit; }
 .link { color: var(--navy); font-weight: 600; }
 .link:hover { text-decoration: underline; }
 
-.notice {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: var(--r-md);
-  font-size: 13px;
-  border: 1px solid;
-}
-.notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
-.notice--info { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-.notice--success { background: var(--emerald-soft); border-color: #A7F3D0; color: #047857; }
 
 /* ==========================================================================
-   Auth pages (login / register)
+   10. TABLES
    ========================================================================== */
-.auth-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 10px 10px;
+  border-bottom: 1px solid var(--border);
 }
-.auth-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 48px 64px;
-  max-width: 460px;
-  margin: 0 auto;
-  width: 100%;
+.table td {
+  padding: 13px 10px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--surface-alt);
+  vertical-align: middle;
 }
-.auth-brand {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 40px;
-}
-.auth-brand__mark {
-  width: 36px; height: 36px; border-radius: var(--r-sm);
-  background: var(--navy); color: var(--emerald);
+.table tr:last-child td { border-bottom: none; }
+
+.tx-merchant { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.tx-icon {
+  width: 34px; height: 34px; border-radius: var(--r-sm);
+  background: var(--surface-alt);
   display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+  flex-shrink: 0;
 }
-.auth-brand__mark svg { width: 19px; height: 19px; }
-.auth-brand__name { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; }
+.tx-icon svg { width: 16px; height: 16px; }
+.tx-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
 
-.auth-heading { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
-.auth-subheading { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; }
+.amount--debit { color: var(--text); font-family: var(--font-mono); font-weight: 600; }
+.amount--credit { color: #059669; font-family: var(--font-mono); font-weight: 600; }
 
-.auth-footer-note {
-  margin-top: 28px;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12.5px;
+
+/* ==========================================================================
+   11. RISK BADGES
+   ========================================================================== 
+   The ONE risk vocabulary in the product. Four distinct states, used
+   identically for transaction status, security event severity, trust
+   score risk, and fraud score risk. HIGH is always visually distinct from
+   both MEDIUM and CRITICAL — never merge or alias these. */
+.badge-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.badge-risk svg { width: 12px; height: 12px; }
+.badge-risk--low      { background: var(--risk-low-soft);      color: var(--risk-low-text); }
+.badge-risk--medium   { background: var(--risk-medium-soft);   color: var(--risk-medium-text); }
+.badge-risk--high     { background: var(--risk-high-soft);     color: var(--risk-high-text); }
+.badge-risk--critical { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+
+/* ---------- Legacy pill (kept — used by live, not-yet-redesigned pages) ----------
+   `.pill` predates the 4-tier risk system and is still referenced by the
+   current Dashboard/Security templates for non-risk statuses (e.g. a
+   transaction simply marked "Completed"). Keep using `.badge-risk` for
+   anything that represents a LOW/MEDIUM/HIGH/CRITICAL risk judgement. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.pill svg { width: 12px; height: 12px; }
+.pill--success { background: var(--emerald-soft); color: #047857; }
+.pill--warning { background: var(--orange-soft); color: #B45309; }
+.pill--danger  { background: var(--red-soft); color: #B91C1C; }
+
+
+/* ==========================================================================
+   12. STATUS CHIPS
+   ==========================================================================
+   Distinct from risk badges. Chips are quiet, neutral-by-default labels for
+   non-risk state — session status (ACTIVE/ENDED/TERMINATED), enrollment
+   status, generic tags. No icon by default, smaller visual weight than a
+   risk badge, so the two are never confused at a glance. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
   color: var(--text-muted);
 }
-.auth-footer-note svg { width: 14px; height: 14px; color: var(--emerald); }
+.chip--neutral { background: var(--surface-alt); color: var(--text-muted); border-color: var(--border); }
+.chip--info    { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+.chip--success { background: var(--risk-low-soft); color: var(--risk-low-text); border-color: #A7F3D0; }
+.chip--warning { background: var(--risk-medium-soft); color: var(--risk-medium-text); border-color: #FDE68A; }
+.chip--danger  { background: var(--risk-critical-soft); color: var(--risk-critical-text); border-color: #FECACA; }
 
-.auth-switch { margin-top: 22px; font-size: 13.5px; color: var(--text-muted); text-align: center; }
-
-.auth-illustration {
-  background: var(--navy);
-  position: relative;
-  overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-}
-.auth-illustration::before {
-  content: "";
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(16,185,129,0.25), transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(59,130,246,0.2), transparent 45%);
-}
-.auth-illustration__panel {
-  position: relative;
-  width: 320px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: var(--r-lg);
-  padding: 24px;
-  backdrop-filter: blur(6px);
-}
-.auth-illustration__wave { width: 100%; height: 60px; margin: 18px 0; }
-.auth-illustration__wave .trust-wave__path { stroke: #34D399; stroke-width: 2.4; }
-.auth-illustration__caption { color: #CBD5E1; font-size: 13px; line-height: 1.6; }
-.auth-illustration__caption strong { color: #fff; display: block; font-size: 15px; margin-bottom: 6px; }
 
 /* ==========================================================================
-   Security Center specific
-   ========================================================================== */
-.timeline { display: flex; flex-direction: column; }
-.timeline-item {
-  display: flex; gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--surface-alt);
-}
-.timeline-item:last-child { border-bottom: none; }
-.timeline-dot {
-  width: 30px; height: 30px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.timeline-dot svg { width: 15px; height: 15px; }
-.timeline-dot--success { background: var(--emerald-soft); color: #047857; }
-.timeline-dot--warning { background: var(--orange-soft); color: #B45309; }
-.timeline-dot--danger { background: var(--red-soft); color: #B91C1C; }
-.timeline-content__title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
-.timeline-content__meta { font-size: 12px; color: var(--text-muted); }
-
-.device-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--surface-alt);
-}
-.device-row:last-child { border-bottom: none; }
-.device-icon {
-  width: 38px; height: 38px; border-radius: var(--r-sm);
-  background: var(--surface-alt); color: var(--navy);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.device-icon svg { width: 18px; height: 18px; }
-.device-info__name { font-size: 13.5px; font-weight: 600; }
-.device-info__meta { font-size: 12px; color: var(--text-muted); }
-.device-row__spacer { flex: 1; }
-
-.recommendation {
-  display: flex; gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--surface-alt);
-}
-.recommendation:last-child { border-bottom: none; }
-.recommendation__icon {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--surface-alt); color: var(--navy);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.recommendation__icon svg { width: 15px; height: 15px; }
-.recommendation__title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
-.recommendation__desc { font-size: 12.5px; color: var(--text-muted); }
-
-/* ---------- Transfer specific ---------- */
-.monitoring-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: var(--emerald-soft);
-  color: #047857;
-  font-size: 12.5px;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-.monitoring-badge svg { width: 14px; height: 14px; }
-.monitoring-badge .trust-wave { width: 40px; height: 16px; }
-.monitoring-badge .trust-wave__path { stroke: #059669; }
-
-/* ==========================================================================
-   Responsive
-   ========================================================================== */
-@media (max-width: 1080px) {
-  .grid--3 { grid-template-columns: 1fr 1fr; }
-  .quick-actions { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 900px) {
-  .auth-shell { grid-template-columns: 1fr; }
-  .auth-illustration { display: none; }
-  .grid--2 { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    left: 0; top: 0;
-    transform: translateX(-100%);
-    box-shadow: var(--shadow-lg);
-  }
-  .sidebar.is-open { transform: translateX(0); }
-  .topbar__menu-btn { display: flex; }
-  .content { padding: 20px 16px 48px; }
-  .grid--3 { grid-template-columns: 1fr; }
-  .quick-actions { grid-template-columns: repeat(2, 1fr); }
-  .user-chip__name { display: none; }
-  .trust-widget--mini .trust-widget__label { display: none; }
-  .topbar { padding: 14px 16px; }
-  .trust-card__meta { grid-template-columns: 1fr; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .trust-wave__path { animation: none; }
-  .quick-action { transition: none; }
-}
-
-/* ==========================================================================
-   Dropdowns — Notifications & Profile menu
-   ========================================================================== */
-.dropdown {
-  position: relative;
-}
-
-.user-chip--btn {
-  cursor: pointer;
-}
-.user-chip__caret {
-  width: 14px; height: 14px;
-  color: var(--text-faint);
-  margin-left: 2px;
-  transition: transform 0.15s ease;
-}
-.user-chip--btn[aria-expanded="true"] .user-chip__caret {
-  transform: rotate(180deg);
-}
-
-.dropdown__panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  min-width: 240px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-lg);
-  padding: 8px;
-  z-index: 50;
-  opacity: 0;
-  transform: translateY(-6px) scale(0.98);
-  transform-origin: top right;
-  transition: opacity 0.16s ease, transform 0.16s ease;
-}
-.dropdown__panel.is-open {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-.dropdown__panel[hidden] { display: none; }
-
-.dropdown__panel--notif { min-width: 300px; padding: 0 0 6px; }
-
-.dropdown__panel-header {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text);
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--surface-alt);
-  margin-bottom: 4px;
-}
-
-.dropdown__list {
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.dropdown__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text);
-  transition: background 0.12s ease;
-}
-.dropdown__item:hover { background: var(--surface-alt); }
-.dropdown__item svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
-.dropdown__item--danger { color: var(--red); }
-.dropdown__item--danger svg { color: var(--red); }
-.dropdown__item--static { cursor: default; align-items: flex-start; }
-.dropdown__item--static:hover { background: transparent; }
-
-.dropdown__item-title { font-size: 13px; font-weight: 600; line-height: 1.35; }
-.dropdown__item-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
-
-.dropdown__divider {
-  height: 1px;
-  background: var(--surface-alt);
-  margin: 6px 4px;
-}
-
-.notif-icon {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.notif-icon svg { width: 15px; height: 15px; }
-.notif-icon--success { background: var(--emerald-soft); color: #047857; }
-.notif-icon--warning { background: var(--orange-soft); color: #B45309; }
-.notif-icon--danger { background: var(--red-soft); color: #B91C1C; }
-
-@media (max-width: 480px) {
-  .dropdown__panel { position: fixed; left: 12px; right: 12px; top: 66px; min-width: 0; }
-}
-
-/* ==========================================================================
-   Toast notifications (Flask flash messages)
+   13. TOASTS (Flask flash messages)
    ========================================================================== */
 .toast-container {
   position: fixed;
@@ -940,19 +732,902 @@ input, select { font-family: inherit; }
 .toast__close svg { width: 14px; height: 14px; }
 .toast__close:hover { color: var(--text); background: var(--surface-alt); }
 
-.toast--success { border-left-color: var(--emerald); }
-.toast--success .toast__icon { background: var(--emerald-soft); color: #047857; }
-.toast--error { border-left-color: var(--red); }
-.toast--error .toast__icon { background: var(--red-soft); color: #B91C1C; }
-.toast--warning { border-left-color: var(--orange); }
-.toast--warning .toast__icon { background: var(--orange-soft); color: #B45309; }
+.toast--success { border-left-color: var(--risk-low); }
+.toast--success .toast__icon { background: var(--risk-low-soft); color: var(--risk-low-text); }
+.toast--error { border-left-color: var(--risk-critical); }
+.toast--error .toast__icon { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+.toast--warning { border-left-color: var(--risk-medium); }
+.toast--warning .toast__icon { background: var(--risk-medium-soft); color: var(--risk-medium-text); }
 .toast--info { border-left-color: #3B82F6; }
 .toast--info .toast__icon { background: #EFF6FF; color: #1D4ED8; }
 
-@media (max-width: 480px) {
+
+/* ==========================================================================
+   14. ALERTS
+   ==========================================================================
+   `.notice` is the inline alert/banner component — flash messages rendered
+   on-page, form validation feedback, and standalone warning banners (e.g.
+   the amber "Step-Up Authentication Triggered" banner). Four variants
+   mirror the risk scale so an inline alert and a badge never disagree
+   about what a color means. */
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  border: 1px solid;
+}
+.notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+.notice--info    { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+.notice--success { background: var(--risk-low-soft); border-color: #A7F3D0; color: var(--risk-low-text); }
+.notice--warning { background: var(--risk-medium-soft); border-color: #FDE68A; color: var(--risk-medium-text); }
+.notice--danger  { background: var(--risk-critical-soft); border-color: #FECACA; color: var(--risk-critical-text); }
+
+/* Standalone banner variant (larger, used for page-level alerts like the
+   OTP page's step-up warning) */
+.alert-banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid;
+}
+.alert-banner svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+.alert-banner__title { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+.alert-banner__desc { font-size: 12.5px; line-height: 1.5; }
+.alert-banner--medium   { background: var(--risk-medium-soft);   border-color: #FDE68A; color: var(--risk-medium-text); }
+.alert-banner--high     { background: var(--risk-high-soft);     border-color: #FED7AA; color: var(--risk-high-text); }
+.alert-banner--critical { background: var(--risk-critical-soft); border-color: #FECACA; color: var(--risk-critical-text); }
+
+
+/* ==========================================================================
+   15. PROGRESS BARS
+   ==========================================================================
+   Generic track+fill component. Used wherever a value needs to read as
+   "how much of something" rather than just a number — fraud score
+   breakdown rows, enrollment progress (keys_collected / keys_required from
+   GET /api/profile). Supports both light-surface and dark-card contexts. */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.progress__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.progress__label { color: var(--text-muted); font-weight: 500; }
+.progress__value { font-family: var(--font-mono); font-weight: 600; }
+
+.progress__track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy);
+  transition: width 0.3s ease;
+}
+.progress__fill--low      { background: var(--risk-low); }
+.progress__fill--medium   { background: var(--risk-medium); }
+.progress__fill--high     { background: var(--risk-high); }
+.progress__fill--critical { background: var(--risk-critical); }
+
+/* Dark-card context (used inside .card--feature, e.g. Fraud Score breakdown) */
+.progress--on-dark .progress__label { color: #94A3B8; }
+.progress--on-dark .progress__value { color: #fff; }
+.progress--on-dark .progress__track { background: rgba(255,255,255,0.12); }
+
+
+/* ==========================================================================
+   16. TRUST SCORE WIDGET
+   ==========================================================================
+   Represents ONLY what GET /api/trust returns: trust_score, risk_level,
+   similarity, enrollment status. Two states: enrolled (full widget) and
+   calibrating (enrollment incomplete — shows keys_collected/keys_required
+   instead of a fabricated score). Risk color drives both the mini topbar
+   widget and the full dashboard/transfer card via `data-risk`. */
+.trust-widget {
+  --pulse-color: var(--risk-low);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.trust-widget[data-risk="low"]      { --pulse-color: var(--risk-low); }
+.trust-widget[data-risk="medium"]   { --pulse-color: var(--risk-medium); }
+.trust-widget[data-risk="high"]     { --pulse-color: var(--risk-high); }
+.trust-widget[data-risk="critical"] { --pulse-color: var(--risk-critical); }
+
+.trust-widget--mini {
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.trust-widget--mini .trust-wave { width: 56px; height: 20px; }
+.trust-widget__score { display: flex; flex-direction: column; line-height: 1.05; }
+.trust-widget__value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--pulse-color);
+}
+.trust-widget__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+/* Calibrating (not yet enrolled) state — honest placeholder, not a fake score */
+.trust-widget--calibrating .trust-widget__value { color: var(--text-faint); font-size: 12px; }
+
+.trust-wave__path {
+  fill: none;
+  stroke: var(--pulse-color);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: pulse-flow 2.4s ease-in-out infinite;
+}
+@keyframes pulse-flow {
+  0%, 100% { stroke-dashoffset: 0; opacity: 0.9; }
+  50% { stroke-dashoffset: -4; opacity: 1; }
+}
+
+/* Full-size trust card (dark feature card content pattern) */
+.trust-card {
+  border-radius: var(--r-lg);
+  background: var(--navy);
+  color: #fff;
+  padding: 24px 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.trust-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 0%, rgba(16,185,129,0.25), transparent 55%);
+  pointer-events: none;
+}
+.trust-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  position: relative;
+}
+.trust-card__eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  display: flex; align-items: center; gap: 6px;
+}
+.trust-card__eyebrow svg { width: 13px; height: 13px; color: var(--risk-low); }
+
+.trust-card__badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16,185,129,0.15);
+  color: #6EE7B7;
+  border: 1px solid rgba(16,185,129,0.3);
+}
+.trust-card__badge[data-risk="low"] {
+  background: rgba(16,185,129,0.15); color: #6EE7B7; border-color: rgba(16,185,129,0.3);
+}
+.trust-card__badge[data-risk="medium"] {
+  background: rgba(234,179,8,0.15); color: #FDE047; border-color: rgba(234,179,8,0.3);
+}
+.trust-card__badge[data-risk="high"] {
+  background: rgba(249,115,22,0.15); color: #FDBA74; border-color: rgba(249,115,22,0.3);
+}
+.trust-card__badge[data-risk="critical"] {
+  background: rgba(239,68,68,0.15); color: #FCA5A5; border-color: rgba(239,68,68,0.3);
+}
+
+.trust-card__score-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  position: relative;
+}
+.trust-card__score {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.trust-card__score span { font-size: 18px; color: #94A3B8; font-weight: 500; }
+
+.trust-card__wave-wrap { flex: 1; height: 46px; }
+.trust-card__wave-wrap svg { width: 100%; height: 100%; }
+.trust-card__wave-wrap .trust-wave__path { stroke: #34D399; }
+
+.trust-card__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+}
+.trust-card__meta-item span { display: block; }
+.trust-card__meta-label {
+  font-size: 11px;
+  color: #94A3B8;
+  margin-bottom: 3px;
+}
+.trust-card__meta-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+/* Calibrating state for the full card — shown when profile.is_enrolled is
+   false / GET /api/trust has not yet returned a real score */
+.trust-card--calibrating .trust-card__score { color: #94A3B8; font-size: 28px; }
+
+
+/* ==========================================================================
+   17. FRAUD SCORE WIDGET
+   ==========================================================================
+   Distinct from the Trust Score widget: represents the transaction-risk
+   engine's output (GET-able only in the context of a transfer attempt —
+   evaluate_transaction_risk), not the always-on behavioral signal. Shares
+   the dark feature-card family as a visual sibling, but shows the overall
+   score PLUS its five-part breakdown, since the point of this widget is
+   transparency into why a transfer was scored the way it was. Appears on
+   Dashboard (most recent evaluation) and Transfer page (live). Never
+   placed inside the Security Timeline — current status and historical
+   events stay visually separate (see .security-timeline below). */
+.fraud-card {
+  border-radius: var(--r-lg);
+  background: var(--navy);
+  color: #fff;
+  padding: 24px 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.fraud-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 10% 100%, rgba(249,115,22,0.18), transparent 55%);
+  pointer-events: none;
+}
+.fraud-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  position: relative;
+}
+.fraud-card__eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  display: flex; align-items: center; gap: 6px;
+}
+.fraud-card__eyebrow svg { width: 13px; height: 13px; color: var(--risk-high); }
+
+/* Reuses the same 4-state badge coloring as .trust-card__badge */
+.fraud-card__badge { font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.fraud-card__badge[data-risk="low"]      { background: rgba(16,185,129,0.15); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+.fraud-card__badge[data-risk="medium"]   { background: rgba(234,179,8,0.15); color: #FDE047; border: 1px solid rgba(234,179,8,0.3); }
+.fraud-card__badge[data-risk="high"]     { background: rgba(249,115,22,0.15); color: #FDBA74; border: 1px solid rgba(249,115,22,0.3); }
+.fraud-card__badge[data-risk="critical"] { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+
+.fraud-card__score-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.fraud-card__score {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.fraud-card__score span { font-size: 18px; color: #94A3B8; font-weight: 500; }
+
+/* Five-part breakdown: Behavior / Amount / Balance / Beneficiary / Velocity —
+   maps 1:1 to evaluate_transaction_risk()'s return keys. */
+.fraud-card__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.fraud-card__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  position: relative;
+}
+.fraud-card__reason-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #CBD5E1;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Calibrating / no-evaluation-yet state — shown on Dashboard before any
+   transfer has ever been evaluated for the user */
+.fraud-card--empty .fraud-card__score { color: #94A3B8; font-size: 22px; }
+
+
+/* ==========================================================================
+   18. SECURITY TIMELINE COMPONENT
+   ==========================================================================
+   Represents HISTORICAL events only (from GET /api/security-events). Kept
+   visually and structurally separate from the Fraud/Trust widgets, which
+   represent CURRENT status — the two must never be visually merged.
+   `.timeline` / `.timeline-item` / `.timeline-dot` below are the existing,
+   already-live classes (Security Center currently renders hardcoded
+   entries with these) — preserved as-is. `.security-timeline` is the
+   formal, risk-aware version to migrate to when Security Center is
+   redesigned: identical structure, but the dot color is driven by a
+   `data-severity` attribute mapped directly to the four risk tokens
+   instead of three ad hoc success/warning/danger classes, so all four
+   real severities the backend can return are visually distinct. */
+.timeline { display: flex; flex-direction: column; }
+.timeline-item {
+  display: flex; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--surface-alt);
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-dot {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.timeline-dot svg { width: 15px; height: 15px; }
+.timeline-dot--success { background: var(--risk-low-soft); color: var(--risk-low-text); }
+.timeline-dot--warning { background: var(--risk-medium-soft); color: var(--risk-medium-text); }
+.timeline-dot--high    { background: var(--risk-high-soft); color: var(--risk-high-text); }
+.timeline-dot--danger  { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+.timeline-content__title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
+.timeline-content__meta { font-size: 12px; color: var(--text-muted); }
+
+/* Formal, risk-aware version for future migration */
+.security-timeline { display: flex; flex-direction: column; }
+.security-timeline__item {
+  display: flex; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--surface-alt);
+}
+.security-timeline__item:last-child { border-bottom: none; }
+.security-timeline__icon {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.security-timeline__icon svg { width: 15px; height: 15px; }
+.security-timeline__icon[data-severity="low"]      { background: var(--risk-low-soft);      color: var(--risk-low-text); }
+.security-timeline__icon[data-severity="medium"]   { background: var(--risk-medium-soft);   color: var(--risk-medium-text); }
+.security-timeline__icon[data-severity="high"]     { background: var(--risk-high-soft);     color: var(--risk-high-text); }
+.security-timeline__icon[data-severity="critical"] { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+.security-timeline__title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
+.security-timeline__meta { font-size: 12px; color: var(--text-muted); }
+
+/* ---------- Device / login history rows ----------
+   No backend model currently exposes per-device or per-login-location
+   data via any route (SecurityEvent has no device/IP field; UserSession
+   does, but no route returns a list of sessions to the template). Kept
+   as a clearly separate placeholder pattern — NOT fed by any real
+   endpoint yet. */
+.device-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--surface-alt);
+}
+.device-row:last-child { border-bottom: none; }
+.device-icon {
+  width: 38px; height: 38px; border-radius: var(--r-sm);
+  background: var(--surface-alt); color: var(--navy);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.device-icon svg { width: 18px; height: 18px; }
+.device-info__name { font-size: 13.5px; font-weight: 600; }
+.device-info__meta { font-size: 12px; color: var(--text-muted); }
+.device-row__spacer { flex: 1; }
+
+.recommendation {
+  display: flex; gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--surface-alt);
+}
+.recommendation:last-child { border-bottom: none; }
+.recommendation__icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface-alt); color: var(--navy);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.recommendation__icon svg { width: 15px; height: 15px; }
+.recommendation__title { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
+.recommendation__desc { font-size: 12.5px; color: var(--text-muted); }
+
+
+/* ==========================================================================
+   19. THREAT SUMMARY CARDS
+   ==========================================================================
+   Security Center's "current security posture" section — sits ABOVE the
+   Security Timeline and is visually distinct from it (grid of compact
+   cards vs. a vertical list), reinforcing current-state vs. historical
+   framing. Five cards: Behavior Anomalies, OTP Challenges, Blocked
+   Transfers, Session Terminations, Account Takeover Alerts. Each card's
+   count should be populated from an aggregation of GET /api/security-events
+   by event_type — no new endpoint is invented for this; until that
+   aggregation is wired up during the Security Center redesign, render the
+   count as "—" rather than a fabricated number. */
+.threat-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+.threat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+}
+.threat-card__icon {
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.threat-card__icon svg { width: 16px; height: 16px; }
+.threat-card__icon[data-tint="low"]      { background: var(--risk-low-soft);      color: var(--risk-low-text); }
+.threat-card__icon[data-tint="medium"]   { background: var(--risk-medium-soft);   color: var(--risk-medium-text); }
+.threat-card__icon[data-tint="high"]     { background: var(--risk-high-soft);     color: var(--risk-high-text); }
+.threat-card__icon[data-tint="critical"] { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+
+.threat-card__count {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.threat-card__count--placeholder { color: var(--text-faint); }
+.threat-card__label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+
+/* ==========================================================================
+   20. QUICK ACTIONS (existing, dashboard-specific pattern — kept as-is)
+   ========================================================================== */
+.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.quick-action {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--text-faint); }
+.quick-action__icon {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.quick-action__icon svg { width: 17px; height: 17px; }
+.quick-action__label { font-size: 13.5px; font-weight: 600; }
+
+
+/* ==========================================================================
+   21. AUTH PAGES (Login / Register) — layout shell, kept as-is
+   ========================================================================== */
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 64px;
+  max-width: 460px;
+  margin: 0 auto;
+  width: 100%;
+}
+.auth-brand {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 40px;
+}
+.auth-brand__mark {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  background: var(--navy); color: var(--risk-low);
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-brand__mark svg { width: 19px; height: 19px; }
+.auth-brand__name { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; }
+
+.auth-heading { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+.auth-subheading { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; }
+
+.auth-footer-note {
+  margin-top: 28px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.auth-footer-note svg { width: 14px; height: 14px; color: var(--risk-low); }
+
+.auth-switch { margin-top: 22px; font-size: 13.5px; color: var(--text-muted); text-align: center; }
+
+.auth-illustration {
+  background: var(--navy);
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-illustration::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(16,185,129,0.25), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(59,130,246,0.2), transparent 45%);
+}
+.auth-illustration__panel {
+  position: relative;
+  width: 320px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  backdrop-filter: blur(6px);
+}
+.auth-illustration__wave { width: 100%; height: 60px; margin: 18px 0; }
+.auth-illustration__wave .trust-wave__path { stroke: #34D399; stroke-width: 2.4; }
+.auth-illustration__caption { color: #CBD5E1; font-size: 13px; line-height: 1.6; }
+.auth-illustration__caption strong { color: #fff; display: block; font-size: 15px; margin-bottom: 6px; }
+
+
+/* ==========================================================================
+   22. TRANSFER-SPECIFIC (existing pattern, kept as-is)
+   ========================================================================== */
+.monitoring-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--risk-low-soft);
+  color: var(--risk-low-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.monitoring-badge svg { width: 14px; height: 14px; }
+.monitoring-badge .trust-wave { width: 40px; height: 16px; }
+.monitoring-badge .trust-wave__path { stroke: #059669; }
+
+
+/* ==========================================================================
+   23. DROPDOWNS — Notifications & Profile menu (existing, kept as-is)
+   ========================================================================== */
+.dropdown { position: relative; }
+
+.dropdown__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top right;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.dropdown__panel.is-open { opacity: 1; transform: translateY(0) scale(1); }
+.dropdown__panel[hidden] { display: none; }
+
+.dropdown__panel--notif { min-width: 300px; padding: 0 0 6px; }
+
+.dropdown__panel-header {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--surface-alt);
+  margin-bottom: 4px;
+}
+
+.dropdown__list { max-height: 320px; overflow-y: auto; }
+
+.dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.12s ease;
+}
+.dropdown__item:hover { background: var(--surface-alt); }
+.dropdown__item svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+.dropdown__item--danger { color: var(--risk-critical); }
+.dropdown__item--danger svg { color: var(--risk-critical); }
+.dropdown__item--static { cursor: default; align-items: flex-start; }
+.dropdown__item--static:hover { background: transparent; }
+
+.dropdown__item-title { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.dropdown__item-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+.dropdown__divider { height: 1px; background: var(--surface-alt); margin: 6px 4px; }
+
+.notif-icon {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.notif-icon svg { width: 15px; height: 15px; }
+.notif-icon--success { background: var(--risk-low-soft); color: var(--risk-low-text); }
+.notif-icon--warning { background: var(--risk-medium-soft); color: var(--risk-medium-text); }
+.notif-icon--danger  { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+
+
+/* ==========================================================================
+   20b. MODALS
+   ==========================================================================
+   Reusable dialog pattern for confirmations (e.g. "Cancel Transfer?") and
+   any future interstitial that needs to interrupt the page. Overlay +
+   panel are separate elements so the panel can reuse `.card` spacing
+   conventions internally. Markup responsibility (role="dialog",
+   aria-modal="true", aria-labelledby, focus trapping) belongs to whichever
+   page/JS instantiates a modal — this is the visual layer only. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.modal-overlay.is-open { opacity: 1; }
+.modal-overlay[hidden] { display: none; }
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.18s ease;
+}
+.modal-overlay.is-open .modal { transform: translateY(0) scale(1); }
+
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.modal__title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.modal__close {
+  color: var(--text-faint);
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.modal__close:hover { color: var(--text); background: var(--surface-alt); }
+.modal__close svg { width: 18px; height: 18px; }
+
+.modal__body { font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.modal__footer .btn { flex: 0 0 auto; }
+
+/* Risk-toned variant for security-critical confirmations (e.g. confirming
+   a CRITICAL-risk transfer cancellation) */
+.modal--critical .modal__header { color: var(--risk-critical-text); }
+
+
+/* ==========================================================================
+   20c. LOADING STATES
+   ==========================================================================
+   Two patterns: a spinner for short, indeterminate waits (button submits,
+   modal actions) and skeleton blocks for content that's actively being
+   fetched from a real endpoint (GET /api/trust, /api/profile,
+   /api/security-events) before first paint. Skeletons should match the
+   shape of the real component they stand in for (card, table row, widget)
+   so layout doesn't shift when real data arrives. */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+.spinner--dark {
+  border-color: rgba(15,23,42,0.15);
+  border-top-color: var(--navy);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn .spinner { margin-right: 2px; }
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-alt) 25%,
+    #E8EDF3 37%,
+    var(--surface-alt) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.skeleton--text { height: 12px; width: 100%; border-radius: 4px; }
+.skeleton--title { height: 18px; width: 60%; border-radius: 4px; }
+.skeleton--card { height: 96px; width: 100%; border-radius: var(--r-lg); }
+.skeleton--avatar { height: 34px; width: 34px; border-radius: 50%; }
+
+/* On dark feature cards (Trust/Fraud widgets while awaiting first API
+   response) the shimmer needs a dark-context palette */
+.skeleton--on-dark {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.06) 25%,
+    rgba(255,255,255,0.14) 37%,
+    rgba(255,255,255,0.06) 63%
+  );
+  background-size: 400% 100%;
+}
+
+
+/* ==========================================================================
+   20d. EMPTY STATES
+   ==========================================================================
+   Used wherever real backend data is legitimately absent — "No recent
+   transactions," "No security events yet," an un-enrolled behavioral
+   profile. Always an honest reflection of a real empty response, never a
+   placeholder for missing wiring (that distinction matters for a security
+   product: an empty state must mean "nothing has happened," not "we
+   haven't built this yet"). */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-state__icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.empty-state__icon svg { width: 20px; height: 20px; }
+.empty-state__title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.empty-state__desc { font-size: 12.5px; max-width: 320px; line-height: 1.5; }
+
+/* Compact inline variant, for a single empty table row (e.g.
+   "No recent transactions." inside a <td>) rather than a full block */
+.empty-state--inline {
+  flex-direction: row;
+  justify-content: center;
+  padding: 16px 0;
+  gap: 6px;
+}
+.empty-state--inline .empty-state__icon { display: none; }
+.empty-state--inline .empty-state__title { font-weight: 500; color: var(--text-muted); }
+
+
+/* ==========================================================================
+   24. RESPONSIVE
+   ========================================================================== */
+@media (max-width: 1080px) {
+  .grid--3 { grid-template-columns: 1fr 1fr; }
+  .quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .threat-summary { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-illustration { display: none; }
+  .grid--2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .topbar__menu-btn { display: flex; }
+  .content { padding: 20px 16px 48px; }
+  .grid--3 { grid-template-columns: 1fr; }
+  .quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .threat-summary { grid-template-columns: repeat(2, 1fr); }
+  .user-chip__name { display: none; }
+  .trust-widget--mini .trust-widget__label { display: none; }
+  .topbar__brand-name { display: none; }
+  .topbar__divider { display: none; }
+  #sessionStatusChip span { display: none; }
+  .topbar { padding: 14px 16px; }
+  .trust-card__meta { grid-template-columns: 1fr; }
+  .dropdown__panel { position: fixed; left: 12px; right: 12px; top: 66px; min-width: 0; }
   .toast-container { top: 12px; right: 12px; left: 12px; max-width: none; width: auto; }
+  .modal { max-width: none; }
+}
+
+@media (max-width: 480px) {
+  .threat-summary { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dropdown__panel, .toast { transition: none; }
+  .trust-wave__path { animation: none; }
+  .quick-action { transition: none; }
+  .dropdown__panel, .toast, .modal-overlay, .modal { transition: none; }
+  .progress__fill { transition: none; }
+  .spinner { animation-duration: 1.2s; }
+  .skeleton { animation: none; background: var(--surface-alt); }
 }
