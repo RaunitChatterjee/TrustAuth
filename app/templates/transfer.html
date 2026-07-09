@@ -1,18 +1,77 @@
 {% extends "base.html" %}
 
 {% block title %}Transfer{% endblock %}
-{% block page_title %}Transfer Money{% endblock %}
+{% block page_title %}Transaction Authorization{% endblock %}
 
 {% block content %}
 
-<div class="grid grid--2">
+{#
+  ============================================================================
+  Data derivation notes (read before editing)
+  ============================================================================
+  The route behind this page (`transfer.transfer_page`) calls
+  render_template("transfer.html") with NO context variables — see
+  app/transfer/routes.py. Nothing below introduces a new Flask route,
+  endpoint, query, or Jinja variable. Every value shown is derived from
+  `current_user`, which Flask-Login already injects into every template
+  context, using relationships that already exist on the model layer:
+
+    current_user.security_events  -> SecurityEvent (models/security_event.py)
+    current_user.sessions         -> UserSession (models/user_session.py)
+    current_user.bank_account     -> BankAccount (models/bank_account.py),
+                                      whose `.transactions` backref exposes
+                                      Transaction rows (models/transaction.py)
+
+  This mirrors the exact derivation pattern already used in dashboard.html.
+  Where no real signal exists yet (e.g. a brand-new session with zero
+  security events), the UI renders an honest "awaiting evaluation" /
+  empty state instead of a fabricated number.
+
+  The live client-side widgets (trust score, risk badge, keystroke meta)
+  keep their original element IDs so app/static/js/main.js — unmodified —
+  continues to update them in real time as the person types into the
+  transfer form.
+#}
+{% set has_user = current_user is defined and current_user.is_authenticated %}
+{% set sec_events = (current_user.security_events | list) if has_user else [] %}
+{% set sessions_list = (current_user.sessions | list) if has_user else [] %}
+
+{% set risk_types = ['CONTINUOUS_AUTH_SUCCESS', 'BEHAVIOR_ANOMALY_DETECTED', 'STEP_UP_AUTH_REQUIRED', 'ACCOUNT_TAKEOVER_DETECTED'] %}
+{% set risk_events = sec_events | selectattr('event_type', 'in', risk_types) | list | sort(attribute='created_at', reverse=True) %}
+{% set latest_risk_event = risk_events[0] if risk_events else none %}
+
+{% set active_sessions = sessions_list | selectattr('status', 'equalto', 'ACTIVE') | list | sort(attribute='last_activity', reverse=True) %}
+{% set current_session = active_sessions[0] if active_sessions else none %}
+
+{% set has_account = has_user and current_user.bank_account %}
+{% set recent_transfers = (current_user.bank_account.transactions | sort(attribute='created_at', reverse=True)) if has_account else [] %}
+
+{% set risk_key = latest_risk_event.severity|lower if latest_risk_event else 'low' %}
+
+<!-- ============================================================
+     MONITORING BANNER
+     ============================================================ -->
+<div class="monitoring-badge" style="margin-bottom: 24px;">
+  <i data-lucide="activity"></i>
+  Behavioral monitoring active on this session — every field on this page is continuously scored
+  <svg class="trust-wave" viewBox="0 0 60 20" preserveAspectRatio="none">
+    <polyline class="trust-wave__path" points="0,10 8,10 12,4 16,16 20,6 24,10 60,10"/>
+  </svg>
+</div>
+
+<!-- ============================================================
+     1. TRANSFER FORM  +  LIVE SECURITY SUMMARY
+     ============================================================ -->
+<div class="grid grid--2" style="margin-bottom: 24px;">
+
+  <!-- LEFT (Primary) — Secure Transfer Form -->
   <div class="card">
-    <div class="monitoring-badge">
-      <i data-lucide="activity"></i>
-      Behavioral monitoring active on this session
-      <svg class="trust-wave" viewBox="0 0 60 20" preserveAspectRatio="none">
-        <polyline class="trust-wave__path" points="0,10 8,10 12,4 16,16 20,6 24,10 60,10"/>
-      </svg>
+    <div class="card__header">
+      <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+        <i data-lucide="send" style="width:16px; height:16px; color: var(--text-muted);"></i>
+        Secure Transfer
+      </span>
+      <span class="chip chip--info"><i data-lucide="shield"></i>Analyst-grade console</span>
     </div>
 
     <form method="POST" id="transferForm" novalidate>
@@ -38,33 +97,36 @@
       </div>
 
       <div class="field">
-        <label for="note">Transfer Note</label>
+        <label for="note">Reference</label>
         <div class="field__control">
-          <i data-lucide="pencil-line" class="field-icon"></i>
-          <input type="text" id="note" name="note" class="has-icon" placeholder="What's this for? (optional)" autocomplete="off">
+          <i data-lucide="file-text" class="field-icon"></i>
+          <input type="text" id="note" name="note" class="has-icon" placeholder="What's this transfer for? (optional)" autocomplete="off">
         </div>
       </div>
 
       <div class="notice notice--info" style="margin-bottom: 20px;">
         <i data-lucide="shield"></i>
-        <span>For your protection, unusual typing behavior during this transfer may trigger an additional verification step.</span>
+        <span>For your protection, this transaction is scored against your behavioral baseline before authorization. Unusual typing patterns may trigger an additional verification step.</span>
       </div>
 
       <button type="submit" class="btn btn--primary btn--block">
         <i data-lucide="send"></i>
-        Transfer Securely
+        Submit Transfer
       </button>
     </form>
   </div>
 
+  <!-- RIGHT — Security Panel -->
   <div style="display:flex; flex-direction:column; gap:24px;">
-    <div class="trust-card" data-risk="low" id="transferTrustCard">
+
+    {% if latest_risk_event %}
+    <div class="trust-card" data-risk="{{ risk_key }}" id="transferTrustCard">
       <div class="trust-card__top">
-        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Live Session Score</span>
-        <span class="trust-card__badge" data-risk="low" id="transferRiskBadge">Low Risk</span>
+        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Trust Score</span>
+        <span class="trust-card__badge" data-risk="{{ risk_key }}" id="transferRiskBadge">{{ latest_risk_event.severity|title }} Risk</span>
       </div>
       <div class="trust-card__score-row">
-        <div class="trust-card__score num" id="transferScoreValue">98<span>/100</span></div>
+        <div class="trust-card__score num" id="transferScoreValue">{{ latest_risk_event.risk_score|round|int }}<span>/100</span></div>
         <div class="trust-card__wave-wrap">
           <svg viewBox="0 0 200 46" preserveAspectRatio="none">
             <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 200,23"/>
@@ -86,17 +148,209 @@
         </div>
       </div>
     </div>
+    {% else %}
+    <div class="trust-card trust-card--calibrating" data-risk="low" id="transferTrustCard">
+      <div class="trust-card__top">
+        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Trust Score</span>
+        <span class="trust-card__badge" data-risk="low" id="transferRiskBadge">Calibrating</span>
+      </div>
+      <div class="trust-card__score-row">
+        <div class="trust-card__score num" id="transferScoreValue">—</div>
+      </div>
+      <div class="trust-card__meta" style="grid-template-columns: 1fr;">
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Keystrokes analyzed</span>
+          <span class="trust-card__meta-value num" id="keystrokeCount">0</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Avg. dwell time</span>
+          <span class="trust-card__meta-value num" id="dwellAvg">—</span>
+        </div>
+        <div class="trust-card__meta-item">
+          <span class="trust-card__meta-label">Status</span>
+          <span class="trust-card__meta-value" id="statusLabel">Waiting for behavioral evaluation</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     <div class="card">
       <div class="card__header">
-        <span class="card__title">Security Notice</span>
+        <span class="card__title">Session &amp; Authentication</span>
       </div>
-      <div class="notice notice--success">
-        <i data-lucide="lock"></i>
-        <span>This transfer is protected by continuous behavioral authentication. If your typing pattern doesn't match your profile, we'll ask you to confirm your identity before funds move.</span>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:12.5px; color: var(--text-muted); font-weight:500;">Session Status</span>
+          {% if current_session %}
+          <span class="chip chip--success"><i data-lucide="circle-dot"></i>Active</span>
+          {% else %}
+          <span class="chip chip--neutral"><i data-lucide="circle-dot"></i>No Active Session</span>
+          {% endif %}
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:12.5px; color: var(--text-muted); font-weight:500;">Behavioral Authentication</span>
+          {% if latest_risk_event and latest_risk_event.event_type == 'CONTINUOUS_AUTH_SUCCESS' %}
+          <span class="chip chip--success"><i data-lucide="check"></i>Verified</span>
+          {% elif latest_risk_event and latest_risk_event.event_type == 'STEP_UP_AUTH_REQUIRED' %}
+          <span class="chip chip--warning"><i data-lucide="shield-alert"></i>Step-up Required</span>
+          {% elif latest_risk_event and latest_risk_event.event_type == 'BEHAVIOR_ANOMALY_DETECTED' %}
+          <span class="chip chip--warning"><i data-lucide="alert-triangle"></i>Anomaly Detected</span>
+          {% elif latest_risk_event and latest_risk_event.event_type == 'ACCOUNT_TAKEOVER_DETECTED' %}
+          <span class="chip chip--danger"><i data-lucide="ban"></i>Blocked</span>
+          {% else %}
+          <span class="chip chip--neutral"><i data-lucide="loader"></i>Awaiting first signal</span>
+          {% endif %}
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:12.5px; color: var(--text-muted); font-weight:500;">Current Risk</span>
+          {% if latest_risk_event %}
+          <span class="badge-risk badge-risk--{{ risk_key }}">{{ latest_risk_event.severity|title }}</span>
+          {% else %}
+          <span class="chip chip--neutral">Waiting for behavioral evaluation</span>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- ============================================================
+     2. TRANSFER SECURITY INFORMATION
+     ============================================================ -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card__header">
+    <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+      <i data-lucide="shield-check" style="width:16px; height:16px; color: var(--text-muted);"></i>
+      Transfer Security Posture
+    </span>
+  </div>
+  <div class="grid grid--2" style="gap:14px;">
+    <div style="display:flex; align-items:flex-start; gap:10px;">
+      <span style="color: var(--risk-low-text);"><i data-lucide="check-circle" style="width:17px; height:17px;"></i></span>
+      <div>
+        <div style="font-size:13.5px; font-weight:600;">Continuous Authentication Active</div>
+        <div style="font-size:12px; color: var(--text-muted);">Your identity is re-verified throughout the session, not just at login.</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:10px;">
+      <span style="color: var(--risk-low-text);"><i data-lucide="check-circle" style="width:17px; height:17px;"></i></span>
+      <div>
+        <div style="font-size:13.5px; font-weight:600;">Behavioral Monitoring Enabled</div>
+        <div style="font-size:12px; color: var(--text-muted);">Keystroke dynamics on this form are compared against your typing baseline.</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:10px;">
+      <span style="color: var(--risk-low-text);"><i data-lucide="check-circle" style="width:17px; height:17px;"></i></span>
+      <div>
+        <div style="font-size:13.5px; font-weight:600;">Adaptive Risk Assessment</div>
+        <div style="font-size:12px; color: var(--text-muted);">Trust scoring adjusts in real time as new behavioral signal is captured.</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:flex-start; gap:10px;">
+      <span style="color: var(--risk-low-text);"><i data-lucide="check-circle" style="width:17px; height:17px;"></i></span>
+      <div>
+        <div style="font-size:13.5px; font-weight:600;">Pre-Authorization Evaluation</div>
+        <div style="font-size:12px; color: var(--text-muted);">This transaction will be evaluated for risk before funds are authorized to move.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     3. RISK PREVIEW
+     ============================================================ -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card__header">
+    <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+      <i data-lucide="gauge" style="width:16px; height:16px; color: var(--text-muted);"></i>
+      Risk Preview
+    </span>
+    <span class="card__link" style="cursor:default; color: var(--text-faint);">Informational only</span>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:2px;">
+    <div style="display:flex; align-items:center; gap:14px; padding:12px 4px; border-bottom:1px solid var(--surface-alt);">
+      <span class="badge-risk badge-risk--low" style="min-width:76px; justify-content:center;">Low</span>
+      <i data-lucide="arrow-right" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+      <span style="font-size:13px; color: var(--text-muted);">Transfer proceeds immediately.</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; padding:12px 4px; border-bottom:1px solid var(--surface-alt);">
+      <span class="badge-risk badge-risk--medium" style="min-width:76px; justify-content:center;">Medium</span>
+      <i data-lucide="arrow-right" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+      <span style="font-size:13px; color: var(--text-muted);">Additional verification may be required.</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; padding:12px 4px; border-bottom:1px solid var(--surface-alt);">
+      <span class="badge-risk badge-risk--high" style="min-width:76px; justify-content:center;">High</span>
+      <i data-lucide="arrow-right" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+      <span style="font-size:13px; color: var(--text-muted);">OTP step-up authentication is triggered.</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; padding:12px 4px;">
+      <span class="badge-risk badge-risk--critical" style="min-width:76px; justify-content:center;">Critical</span>
+      <i data-lucide="arrow-right" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+      <span style="font-size:13px; color: var(--text-muted);">Transfer is blocked and the session may be terminated.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     4. RECENT PROTECTED TRANSFERS
+     ============================================================ -->
+<div class="card">
+  <div class="card__header">
+    <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+      <i data-lucide="receipt" style="width:16px; height:16px; color: var(--text-muted);"></i>
+      Recent Protected Transfers
+    </span>
+    <a href="{{ url_for('main.transactions') }}" class="card__link">
+      View all <i data-lucide="chevron-right"></i>
+    </a>
+  </div>
+
+  {% if recent_transfers %}
+  <table class="table">
+    <thead>
+      <tr><th>Beneficiary</th><th>Date</th><th>Status</th><th style="text-align:right;">Amount</th></tr>
+    </thead>
+    <tbody>
+      {% for transaction in recent_transfers[:5] %}
+      <tr>
+        <td>
+          <div class="tx-merchant">
+            <span class="tx-icon"><i data-lucide="arrow-left-right"></i></span>
+            <div><div>{{ transaction.recipient }}</div><div class="tx-sub">{{ transaction.transaction_type }}</div></div>
+          </div>
+        </td>
+        <td>{{ transaction.created_at.strftime("%d %b %Y") }}</td>
+        <td>
+          {% if transaction.status in ["Completed", "Success", "Verified"] %}
+          <span class="pill pill--success"><i data-lucide="check"></i>{{ transaction.status }}</span>
+          {% elif transaction.status in ["Pending", "Processing"] %}
+          <span class="pill pill--warning"><i data-lucide="shield-alert"></i>{{ transaction.status }}</span>
+          {% elif transaction.status in ["Failed", "Blocked", "Declined"] %}
+          <span class="pill pill--danger"><i data-lucide="x"></i>{{ transaction.status }}</span>
+          {% else %}
+          <span class="pill pill--warning"><i data-lucide="shield-alert"></i>{{ transaction.status }}</span>
+          {% endif %}
+        </td>
+        {% if transaction.transaction_type|lower == "credit" %}
+        <td style="text-align:right;" class="amount--credit">+ ₹{{ "{:,.2f}".format(transaction.amount) }}</td>
+        {% else %}
+        <td style="text-align:right;" class="amount--debit">− ₹{{ "{:,.2f}".format(transaction.amount) }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-state__icon"><i data-lucide="shield-check"></i></span>
+    <span class="empty-state__title">No protected transfers yet</span>
+    <span class="empty-state__desc">Transfers submitted through this console will appear here, along with the behavioral risk signal recorded at the time of authorization.</span>
+  </div>
+  {% endif %}
 </div>
 
 {% endblock %}

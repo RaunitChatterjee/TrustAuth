@@ -1,34 +1,75 @@
 {% extends "base.html" %}
 
-{% block title %}Verify Transfer{% endblock %}
+{% block title %}Step-Up Authentication{% endblock %}
 {% block body_class %}otp-body{% endblock %}
+
+{#
+  ============================================================================
+  Data derivation notes (read before editing)
+  ============================================================================
+  The route behind this page (`transfer.verify_transfer`) calls
+  render_template("verify_transfer_otp.html") with NO context variables —
+  see app/transfer/routes.py. Nothing below introduces a new Flask route,
+  endpoint, query, or Jinja variable, and no backend file has been touched.
+
+  "Current Risk" and "Session Status" are derived the exact same way
+  dashboard.html and transfer.html already derive them — from
+  `current_user`, which Flask-Login injects into every template context,
+  via relationships that already exist on the model layer:
+
+    current_user.security_events -> SecurityEvent (models/security_event.py)
+    current_user.sessions        -> UserSession (models/user_session.py)
+
+  "Beneficiary", "Amount" and "Reference" belong to TransferOTP
+  (models/transfer_otp.py), which has no relationship back to User and is
+  not passed into this template's context by the route. That data is
+  therefore genuinely unavailable at the template layer, and is rendered
+  as an honest "Not available" chip — the same idiom dashboard.html
+  already uses for not-yet-wired fields — rather than inventing a value.
+
+  "Resend OTP" and "Cancel Transfer" post to the two routes that already
+  exist for this purpose (transfer.resend_transfer, transfer.cancel_transfer)
+  instead of being simulated in JavaScript. The OTP form itself keeps its
+  original method/action (submits back to transfer.verify_transfer) and
+  its original field name, `otp`, unchanged.
+#}
+{% set has_user = current_user is defined and current_user.is_authenticated %}
+{% set sec_events = (current_user.security_events | list) if has_user else [] %}
+{% set sessions_list = (current_user.sessions | list) if has_user else [] %}
+
+{% set risk_types = ['CONTINUOUS_AUTH_SUCCESS', 'BEHAVIOR_ANOMALY_DETECTED', 'STEP_UP_AUTH_REQUIRED', 'ACCOUNT_TAKEOVER_DETECTED'] %}
+{% set risk_events = sec_events | selectattr('event_type', 'in', risk_types) | list | sort(attribute='created_at', reverse=True) %}
+{% set latest_risk_event = risk_events[0] if risk_events else none %}
+{% set risk_key = latest_risk_event.severity|lower if latest_risk_event else none %}
+
+{% set active_sessions = sessions_list | selectattr('status', 'equalto', 'ACTIVE') | list | sort(attribute='last_activity', reverse=True) %}
+{% set current_session = active_sessions[0] if active_sessions else none %}
 
 {% block head %}
 <style>
   /* ==========================================================================
      Step-Up Authentication (verify_transfer_otp.html) — page-scoped styles.
      Reuses design tokens and component classes already defined in
-     static/css/style.css (--navy, --emerald, --orange, --red, --border,
-     --surface, --r-md/--r-lg, --shadow-sm/md/lg, .card, .btn, .notice,
-     .auth-footer-note) so this page stays visually consistent with the
-     rest of TrustAuth without touching the shared stylesheet.
+     static/css/style.css (--navy, --border, --surface, --text, --r-md/lg,
+     --shadow-sm/md, .card, .btn, .chip, .badge-risk, .notice, .alert-banner,
+     .empty-state, .auth-footer-note) so this page stays visually consistent
+     with the rest of TrustAuth without touching the shared stylesheet.
      ========================================================================== */
 
   .otp-shell {
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
+    padding: 40px 20px 56px;
     background: var(--bg);
+    display: flex;
+    justify-content: center;
   }
 
   .otp-wrap {
     width: 100%;
-    max-width: 460px;
+    max-width: 660px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 18px;
   }
 
   .otp-brand {
@@ -36,7 +77,6 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 4px;
   }
   .otp-brand__mark {
     width: 32px; height: 32px;
@@ -47,102 +87,96 @@
   }
   .otp-brand__mark svg { width: 17px; height: 17px; }
   .otp-brand__name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; color: var(--navy); }
+  .otp-brand__tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
 
-  /* ---------- Amber warning banner ---------- */
-  .otp-alert-banner {
-    display: flex;
-    gap: 12px;
+  /* ---------- 1. Hero banner ---------- */
+  .su-hero {
     align-items: flex-start;
-    background: var(--orange-soft);
-    border: 1px solid #FDE68A;
-    border-radius: var(--r-md);
-    padding: 14px 16px;
-    box-shadow: var(--shadow-sm);
   }
-  .otp-alert-banner svg {
-    width: 20px; height: 20px;
-    color: #B45309;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-  .otp-alert-banner__title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #92400E;
-    margin-bottom: 3px;
-  }
-  .otp-alert-banner__desc {
-    font-size: 12.5px;
-    color: #92400E;
-    line-height: 1.5;
-  }
-
-  /* ---------- Flash messages (extra variants not in the shared sheet) ---------- */
-  .otp-flashes { display: flex; flex-direction: column; gap: 10px; }
-  .notice--warning { background: var(--orange-soft); border-color: #FDE68A; color: #92400E; }
-  .notice--danger { background: var(--red-soft); border-color: #FECACA; color: #B91C1C; }
-
-  /* ---------- Card ---------- */
-  .otp-card { padding: 32px 28px; }
-
-  .otp-card__top {
-    text-align: center;
-    margin-bottom: 22px;
-  }
-  .otp-shield {
-    width: 52px; height: 52px;
+  .su-hero__icon-wrap {
+    width: 42px; height: 42px;
     border-radius: 50%;
-    background: var(--navy);
-    color: var(--emerald);
+    background: rgba(154, 52, 18, 0.1);
     display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 16px;
-    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
   }
-  .otp-shield svg { width: 26px; height: 26px; }
-  .otp-heading {
-    font-size: 21px;
+  .su-hero__icon-wrap svg { width: 22px; height: 22px; }
+  .su-hero__badge-row { margin-bottom: 10px; }
+  .su-hero__title {
+    font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.01em;
     color: var(--text);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  .otp-subheading {
+  .su-hero__desc {
     font-size: 13.5px;
-    color: var(--text-muted);
     line-height: 1.6;
+    color: var(--risk-high-text);
   }
 
-  /* ---------- Transaction summary ---------- */
-  .otp-summary {
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    padding: 14px 16px;
-    margin-bottom: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .otp-summary__row {
+  /* ---------- Flash messages ---------- */
+  .otp-flashes { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ---------- 2. Transaction summary card ---------- */
+  .su-summary-card .card__header { margin-bottom: 10px; }
+  .su-summary__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 13.5px;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--surface-alt);
+    font-size: 13px;
   }
-  .otp-summary__row span { color: var(--text-muted); font-weight: 500; }
-  .otp-summary__row strong {
+  .su-summary__row:last-child { border-bottom: none; }
+  .su-summary__label {
+    color: var(--text-muted);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .su-summary__label svg { width: 14px; height: 14px; color: var(--text-faint); }
+  .su-summary__value {
     font-family: var(--font-mono);
     font-weight: 600;
     color: var(--text);
     text-align: right;
   }
 
-  /* ---------- OTP input boxes ---------- */
+  /* ---------- 3. OTP verification card ---------- */
+  .otp-card__top { text-align: center; margin-bottom: 20px; }
+  .otp-shield {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--emerald);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    box-shadow: var(--shadow-md);
+  }
+  .otp-shield svg { width: 24px; height: 24px; }
+  .otp-heading {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .otp-subheading { font-size: 12.5px; color: var(--text-muted); }
+
   .otp-input-group {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
   .otp-box {
     width: 46px;
@@ -164,63 +198,135 @@
     box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
   }
   .otp-box.is-filled { border-color: #94A3B8; }
-  .otp-box.is-error { border-color: var(--red); background: var(--red-soft); }
   .otp-box:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* ---------- Countdown ---------- */
-  .otp-countdown {
-    text-align: center;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 22px;
-  }
-  .otp-countdown__value {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    color: var(--navy);
-    font-size: 15px;
-    margin-left: 4px;
-  }
-  .otp-countdown.is-expired .otp-countdown__value { color: var(--red); }
-  .otp-countdown__expired-msg {
-    display: none;
-    color: var(--red);
-    font-weight: 600;
-  }
-  .otp-countdown.is-expired .otp-countdown__label,
-  .otp-countdown.is-expired .otp-countdown__value {
-    display: none;
-  }
-  .otp-countdown.is-expired .otp-countdown__expired-msg { display: inline; }
-
-  /* ---------- Actions ---------- */
-  .otp-actions {
+  /* ---------- 4. Countdown / OTP validity note ---------- */
+  .otp-validity-note {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 18px;
-  }
-
-  .otp-resend {
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     text-align: center;
     font-size: 12.5px;
     color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .otp-validity-note svg { width: 14px; height: 14px; color: var(--text-faint); }
+
+  /* ---------- 5. Actions ---------- */
+  .otp-actions { display: flex; flex-direction: column; gap: 10px; }
+  .otp-actions form { margin: 0; }
+  .otp-resend-row {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
   }
   .otp-resend-btn {
     font-weight: 700;
     color: var(--navy);
     margin-left: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    cursor: pointer;
   }
-  .otp-resend-btn:disabled {
-    color: var(--text-faint);
-    cursor: not-allowed;
-  }
-  .otp-resend-btn:not(:disabled):hover { text-decoration: underline; }
+  .otp-resend-btn:hover { text-decoration: underline; }
 
-  @media (max-width: 420px) {
-    .otp-box { width: 40px; height: 48px; font-size: 19px; }
+  /* Cancel action reuses .btn--ghost but leans toward the risk-critical
+     tone so it doesn't compete visually with the primary Verify action —
+     an additive page-scoped tint, not a new global button variant. */
+  .btn--cancel-danger {
+    color: var(--risk-critical-text);
+    border-color: #FECACA;
+  }
+  .btn--cancel-danger:hover { background: var(--risk-critical-soft); color: var(--risk-critical-text); }
+
+  /* ---------- 6. Security information ---------- */
+  .su-security-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .su-security-item { display: flex; align-items: flex-start; gap: 10px; }
+  .su-security-item__icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--risk-low-soft);
+    color: var(--risk-low-text);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .su-security-item__icon svg { width: 14px; height: 14px; }
+  .su-security-item__title { font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
+
+  /* ---------- 7. Authentication flow ---------- */
+  .su-flow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .su-flow__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    position: relative;
+  }
+  .su-flow__connector {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .su-flow__step:last-child .su-flow__connector { display: none; }
+  .su-flow__dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-alt);
+    color: var(--text-faint);
+    border: 2px solid var(--border);
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  .su-flow__dot svg { width: 14px; height: 14px; }
+  .su-flow__step--done .su-flow__dot {
+    background: var(--risk-low-soft);
+    color: var(--risk-low-text);
+    border-color: var(--risk-low);
+  }
+  .su-flow__step--done .su-flow__connector { background: var(--risk-low); }
+  .su-flow__step--current .su-flow__dot {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 4px var(--risk-medium-soft);
+  }
+  .su-flow__label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-align: center;
+    line-height: 1.3;
+    padding: 0 2px;
+  }
+  .su-flow__step--done .su-flow__label { color: var(--text-muted); }
+  .su-flow__step--current .su-flow__label { color: var(--navy); font-weight: 700; }
+
+  @media (max-width: 560px) {
+    .otp-box { width: 38px; height: 46px; font-size: 18px; }
     .otp-input-group { gap: 7px; }
-    .otp-card { padding: 26px 18px; }
+    .card { padding: 20px 16px; }
+    .su-security-grid { grid-template-columns: 1fr; }
+    .su-flow__label { font-size: 9.5px; }
   }
 </style>
 {% endblock %}
@@ -233,16 +339,20 @@
       <span class="otp-brand__mark"><i data-lucide="shield-check"></i></span>
       <span class="otp-brand__name">TrustAuth</span>
     </div>
+    <div class="otp-brand__tag" style="text-align:center;">Behavioral Biometrics &amp; Account Takeover Detection Platform</div>
 
-    <!-- ============ Step-up warning banner ============ -->
-    <div class="otp-alert-banner">
-      <i data-lucide="triangle-alert"></i>
+    <!-- ============ 1. Hero banner ============ -->
+    <div class="alert-banner alert-banner--high su-hero">
+      <span class="su-hero__icon-wrap"><i data-lucide="shield-alert"></i></span>
       <div>
-        <div class="otp-alert-banner__title">Step-Up Authentication Triggered</div>
-        <div class="otp-alert-banner__desc">
-          TrustAuth detected behaviour different from your enrolled typing profile.
-          This additional verification protects your account from Account Takeover attacks.
+        <div class="su-hero__badge-row">
+          <span class="badge-risk badge-risk--high"><i data-lucide="triangle-alert"></i>Step-Up Authentication Triggered</span>
         </div>
+        <h1 class="su-hero__title">Step-Up Authentication</h1>
+        <p class="su-hero__desc">
+          Behavioral anomaly detected during transaction verification.<br>
+          Identity confirmation required before authorization.
+        </p>
       </div>
     </div>
 
@@ -265,30 +375,57 @@
       {% endif %}
     {% endwith %}
 
-    <!-- ============ OTP verification card ============ -->
+    <!-- ============ 2. Transaction summary card ============ -->
+    <div class="card su-summary-card">
+      <div class="card__header">
+        <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="file-clock" style="width:16px; height:16px; color: var(--text-muted);"></i>
+          Transaction Summary
+        </span>
+        <span class="chip chip--warning"><i data-lucide="pause-circle"></i>Transfer Paused</span>
+      </div>
+
+      <div class="su-summary__row">
+        <span class="su-summary__label"><i data-lucide="user"></i>Beneficiary</span>
+        <span class="chip chip--neutral">Not available</span>
+      </div>
+
+      <div class="su-summary__row">
+        <span class="su-summary__label"><i data-lucide="indian-rupee"></i>Amount</span>
+        <span class="chip chip--neutral">Not available</span>
+      </div>
+
+      <div class="su-summary__row">
+        <span class="su-summary__label"><i data-lucide="file-text"></i>Reference</span>
+        <span class="chip chip--neutral">Not available</span>
+      </div>
+
+      <div class="su-summary__row">
+        <span class="su-summary__label"><i data-lucide="gauge"></i>Current Risk</span>
+        {% if latest_risk_event %}
+        <span class="badge-risk badge-risk--{{ risk_key }}">{{ latest_risk_event.severity|title }}</span>
+        {% else %}
+        <span class="chip chip--neutral">Not available</span>
+        {% endif %}
+      </div>
+
+      <div class="su-summary__row">
+        <span class="su-summary__label"><i data-lucide="circle-dot"></i>Session Status</span>
+        {% if current_session %}
+        <span class="chip chip--success"><i data-lucide="circle-dot"></i>Active</span>
+        {% else %}
+        <span class="chip chip--neutral"><i data-lucide="circle-dot"></i>No Active Session</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ============ 3. OTP verification card ============ -->
     <div class="card otp-card">
       <div class="otp-card__top">
         <span class="otp-shield"><i data-lucide="shield-check"></i></span>
-        <h1 class="otp-heading">Additional Verification Required</h1>
-        <p class="otp-subheading">
-          We've detected unusual behavioural activity.<br>
-          Please verify this transfer using the OTP sent for verification.
-        </p>
+        <h2 class="otp-heading">Enter verification code</h2>
+        <p class="otp-subheading">Confirm your identity to resume this transaction.</p>
       </div>
-
-      {% if beneficiary or amount or note %}
-      <div class="otp-summary">
-        {% if beneficiary %}
-        <div class="otp-summary__row"><span>Beneficiary</span><strong>{{ beneficiary }}</strong></div>
-        {% endif %}
-        {% if amount %}
-        <div class="otp-summary__row"><span>Amount</span><strong>₹{{ amount }}</strong></div>
-        {% endif %}
-        {% if note %}
-        <div class="otp-summary__row"><span>Reference</span><strong>{{ note }}</strong></div>
-        {% endif %}
-      </div>
-      {% endif %}
 
       <form method="POST" id="otpForm" novalidate>
         <input type="hidden" name="otp" id="otpHidden">
@@ -302,28 +439,104 @@
           <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-box" data-index="5">
         </div>
 
-        <div class="otp-countdown" id="otpCountdown">
-          <span class="otp-countdown__label">OTP expires in</span>
-          <span class="otp-countdown__value" id="otpCountdownValue">04:59</span>
-          <span class="otp-countdown__expired-msg">OTP expired.</span>
+        <!-- ============ 4. Countdown ============
+             No expiry timestamp is passed into this template's context, so
+             no client-side timer is fabricated for it. The server remains
+             the single source of truth for OTP validity. -->
+        <div class="otp-validity-note">
+          <i data-lucide="clock"></i>
+          <span>OTP validity managed by server.</span>
         </div>
 
+        <!-- ============ 5. Actions ============ -->
         <div class="otp-actions">
-          <button type="submit" class="btn btn--primary btn--block" id="verifyBtn" disabled>
+          <button type="submit" class="btn btn--primary btn--block" id="verifyBtn">
             <i data-lucide="shield-check"></i>
-            Verify Transfer
+            Verify Transaction
           </button>
-          <a href="{{ url_for('main.dashboard') }}" class="btn btn--ghost btn--block" id="cancelBtn">
-            <i data-lucide="x"></i>
-            Cancel Transfer
-          </a>
-        </div>
-
-        <div class="otp-resend">
-          Didn't receive OTP?
-          <button type="button" class="otp-resend-btn" id="resendBtn" disabled>Resend OTP (0:30)</button>
         </div>
       </form>
+
+      <div class="otp-actions" style="margin-top: 10px;">
+        <form method="POST" action="{{ url_for('transfer.cancel_transfer') }}" id="cancelForm">
+          <button type="submit" class="btn btn--ghost btn--block btn--cancel-danger" id="cancelBtn">
+            <i data-lucide="x"></i>
+            Cancel Transfer
+          </button>
+        </form>
+      </div>
+
+      <div class="otp-resend-row">
+        Didn't receive OTP?
+        <form method="POST" action="{{ url_for('transfer.resend_transfer') }}" style="display:inline;">
+          <button type="submit" class="otp-resend-btn">Resend OTP</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============ 6. Security information ============ -->
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="fingerprint" style="width:16px; height:16px; color: var(--text-muted);"></i>
+          Why am I seeing this?
+        </span>
+      </div>
+      <div class="su-security-grid">
+        <div class="su-security-item">
+          <span class="su-security-item__icon"><i data-lucide="check"></i></span>
+          <span class="su-security-item__title">Behavioral Biometrics Detected Elevated Risk</span>
+        </div>
+        <div class="su-security-item">
+          <span class="su-security-item__icon"><i data-lucide="check"></i></span>
+          <span class="su-security-item__title">Continuous Authentication Triggered</span>
+        </div>
+        <div class="su-security-item">
+          <span class="su-security-item__icon"><i data-lucide="check"></i></span>
+          <span class="su-security-item__title">Adaptive Risk Assessment</span>
+        </div>
+        <div class="su-security-item">
+          <span class="su-security-item__icon"><i data-lucide="check"></i></span>
+          <span class="su-security-item__title">OTP Required Before Authorization</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 7. Authentication flow ============ -->
+    <div class="card">
+      <div class="card__header">
+        <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="route" style="width:16px; height:16px; color: var(--text-muted);"></i>
+          Authentication Flow
+        </span>
+      </div>
+      <div class="su-flow">
+        <div class="su-flow__step su-flow__step--done">
+          <div class="su-flow__connector"></div>
+          <span class="su-flow__dot"><i data-lucide="check"></i></span>
+          <span class="su-flow__label">Login</span>
+        </div>
+        <div class="su-flow__step su-flow__step--done">
+          <div class="su-flow__connector"></div>
+          <span class="su-flow__dot"><i data-lucide="check"></i></span>
+          <span class="su-flow__label">Behavior Verification</span>
+        </div>
+        <div class="su-flow__step su-flow__step--done">
+          <div class="su-flow__connector"></div>
+          <span class="su-flow__dot"><i data-lucide="check"></i></span>
+          <span class="su-flow__label">Transaction Analysis</span>
+        </div>
+        <div class="su-flow__step su-flow__step--current">
+          <div class="su-flow__connector"></div>
+          <span class="su-flow__dot"><i data-lucide="shield-check"></i></span>
+          <span class="su-flow__label">OTP Verification</span>
+        </div>
+        <div class="su-flow__step">
+          <div class="su-flow__connector"></div>
+          <span class="su-flow__dot"><i data-lucide="flag"></i></span>
+          <span class="su-flow__label">Transfer Complete</span>
+        </div>
+      </div>
     </div>
 
     <div class="auth-footer-note" style="justify-content: center;">
@@ -339,19 +552,15 @@
 <script>
   (function () {
     /* ============ OTP box behaviour: auto-focus, auto-advance,
-       backspace navigation, paste support ============ */
+       backspace navigation, paste support. Purely a client-side typing
+       convenience over the existing `otp` hidden field — no validation
+       logic, expiry logic, or backend behaviour is added here. ============ */
     const boxes = Array.from(document.querySelectorAll(".otp-box"));
     const hiddenInput = document.getElementById("otpHidden");
     const verifyBtn = document.getElementById("verifyBtn");
 
     function syncHiddenValue() {
       hiddenInput.value = boxes.map((b) => b.value).join("");
-    }
-
-    function updateVerifyState() {
-      const filled = boxes.every((b) => b.value.length === 1);
-      const expired = document.getElementById("otpCountdown").classList.contains("is-expired");
-      verifyBtn.disabled = !filled || expired;
     }
 
     boxes.forEach((box, i) => {
@@ -362,7 +571,6 @@
           boxes[i + 1].focus();
         }
         syncHiddenValue();
-        updateVerifyState();
       });
 
       box.addEventListener("keydown", (e) => {
@@ -372,7 +580,6 @@
             boxes[i - 1].value = "";
             boxes[i - 1].classList.remove("is-filled");
             syncHiddenValue();
-            updateVerifyState();
           }
         } else if (e.key === "ArrowLeft" && i > 0) {
           boxes[i - 1].focus();
@@ -400,84 +607,26 @@
         (nextEmpty === -1 ? boxes[boxes.length - 1] : boxes[nextEmpty]).focus();
 
         syncHiddenValue();
-        updateVerifyState();
       });
     });
 
     if (boxes[0]) boxes[0].focus();
 
-    /* ============ OTP expiry countdown (04:59) ============ */
-    let secondsLeft = 4 * 60 + 59;
-    const countdownEl = document.getElementById("otpCountdown");
-    const countdownValueEl = document.getElementById("otpCountdownValue");
-
-    function renderCountdown() {
-      const m = Math.floor(secondsLeft / 60).toString().padStart(2, "0");
-      const s = (secondsLeft % 60).toString().padStart(2, "0");
-      countdownValueEl.textContent = `${m}:${s}`;
-    }
-
-    const countdownTimer = setInterval(() => {
-      secondsLeft -= 1;
-      if (secondsLeft <= 0) {
-        secondsLeft = 0;
-        renderCountdown();
-        countdownEl.classList.add("is-expired");
-        boxes.forEach((b) => (b.disabled = true));
-        updateVerifyState();
-        clearInterval(countdownTimer);
-        return;
-      }
-      renderCountdown();
-    }, 1000);
-
-    renderCountdown();
-    updateVerifyState();
-
-    /* ============ Resend OTP cooldown (30s) ============ */
-    let resendSeconds = 30;
-    const resendBtn = document.getElementById("resendBtn");
-
-    function renderResend() {
-      resendBtn.textContent = `Resend OTP (0:${resendSeconds.toString().padStart(2, "0")})`;
-    }
-
-    const resendTimer = setInterval(() => {
-      resendSeconds -= 1;
-      if (resendSeconds <= 0) {
-        clearInterval(resendTimer);
-        resendBtn.disabled = false;
-        resendBtn.textContent = "Resend OTP";
-        return;
-      }
-      renderResend();
-    }, 1000);
-
-    resendBtn.addEventListener("click", () => {
-      if (resendBtn.disabled) return;
-
-      // No backend call yet — resets the local countdowns only.
-      boxes.forEach((b) => {
-        b.value = "";
-        b.disabled = false;
-        b.classList.remove("is-filled", "is-error");
-      });
+    document.getElementById("otpForm").addEventListener("submit", () => {
       syncHiddenValue();
-      if (boxes[0]) boxes[0].focus();
-
-      secondsLeft = 4 * 60 + 59;
-      countdownEl.classList.remove("is-expired");
-      renderCountdown();
-      updateVerifyState();
-
-      resendSeconds = 30;
-      resendBtn.disabled = true;
-      renderResend();
-
-      if (typeof showToast === "function") {
-        showToast("A new OTP has been sent.", "success");
-      }
     });
+
+    /* Confirm before cancelling — the route itself already deletes the
+       pending transfer unconditionally, so this only guards against an
+       accidental tap/click. */
+    const cancelForm = document.getElementById("cancelForm");
+    if (cancelForm) {
+      cancelForm.addEventListener("submit", (e) => {
+        if (!window.confirm("Cancel this transfer? This action cannot be undone.")) {
+          e.preventDefault();
+        }
+      });
+    }
   })();
 </script>
 {% endblock %}

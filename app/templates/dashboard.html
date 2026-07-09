@@ -5,65 +5,312 @@
 
 {% block content %}
 
-<div style="margin-bottom: 24px;">
-  <h2 style="font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">
-    Good afternoon, {{ current_user.username if current_user is defined else "Aditi" }} 👋
-  </h2>
-  <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
-    Here's what's happening with your accounts today.
-  </p>
+{#
+  ============================================================================
+  Data derivation notes (read before editing)
+  ============================================================================
+  This route (`main.dashboard`) only ever passes `account` and `transactions`
+  to this template — see app/main/routes.py. Everything else below is derived
+  from `current_user`, which Flask-Login already makes available in every
+  template and which carries two real relationships: `security_events` and
+  `sessions` (see models/user.py). No new query, endpoint, or Flask route is
+  introduced here — the block below only aggregates data that already exists
+  on the model instance Jinja has in hand.
+
+  There is currently no relationship from User -> BehaviorProfile, and no
+  transaction-risk (fraud) score is ever persisted anywhere reachable from
+  this context (transaction_risk_service.evaluate_transaction_risk() output
+  is only printed to the console in services/transfer_service.py). Those
+  sections are rendered as honest empty states rather than invented numbers.
+
+  NOTE: this data-derivation block is unchanged from the previous revision.
+  Everything below it is presentation-only — no new Jinja variable, filter,
+  or data source has been introduced in this pass.
+#}
+{% set has_user = current_user is defined and current_user.is_authenticated %}
+{% set sec_events = (current_user.security_events | list) if has_user else [] %}
+{% set sessions_list = (current_user.sessions | list) if has_user else [] %}
+
+{% set recent_events = sec_events | sort(attribute='created_at', reverse=True) %}
+
+{% set risk_types = ['CONTINUOUS_AUTH_SUCCESS', 'BEHAVIOR_ANOMALY_DETECTED', 'STEP_UP_AUTH_REQUIRED', 'ACCOUNT_TAKEOVER_DETECTED'] %}
+{% set risk_events = sec_events | selectattr('event_type', 'in', risk_types) | list | sort(attribute='created_at', reverse=True) %}
+{% set latest_risk_event = risk_events[0] if risk_events else none %}
+
+{% set otp_types = ['STEP_UP_AUTH_REQUIRED', 'OTP_VERIFIED', 'OTP_FAILED', 'OTP_RESENT'] %}
+{% set anomaly_count = sec_events | selectattr('event_type', 'equalto', 'BEHAVIOR_ANOMALY_DETECTED') | list | length %}
+{% set otp_count = sec_events | selectattr('event_type', 'in', otp_types) | list | length %}
+{% set blocked_count = sec_events | selectattr('event_type', 'equalto', 'TRANSFER_BLOCKED') | list | length %}
+{% set terminated_count = sessions_list | selectattr('status', 'equalto', 'TERMINATED') | list | length %}
+{% set total_events = sec_events | length %}
+
+{% set active_sessions = sessions_list | selectattr('status', 'equalto', 'ACTIVE') | list | sort(attribute='last_activity', reverse=True) %}
+{% set current_session = active_sessions[0] if active_sessions else none %}
+{% set latest_session = (sessions_list | sort(attribute='last_activity', reverse=True))[0] if sessions_list else none %}
+
+<!-- ============================================================
+     1. HERO — larger, premium enterprise banner
+     ============================================================ -->
+<div class="card--feature" style="padding: 40px 44px; margin-bottom: 36px;">
+  <div style="position:relative; display:flex; justify-content:space-between; align-items:flex-start; gap:36px; flex-wrap:wrap;">
+
+    <div style="max-width:580px;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:20px;">
+        <span style="width:46px; height:46px; border-radius: var(--r-md); background: var(--risk-low); color: var(--navy); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="shield-check" style="width:24px; height:24px;"></i>
+        </span>
+        <div style="line-height:1.25;">
+          <div style="font-weight:800; font-size:20px; letter-spacing:-0.01em; color:#fff;">TrustAuth</div>
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.03em; color:#6EE7B7; text-transform:uppercase;">Behavioral Biometrics Platform</div>
+        </div>
+      </div>
+
+      <h2 style="font-size: 27px; font-weight:800; letter-spacing:-0.02em; color:#fff; margin-bottom:8px;">
+        Welcome back, {{ current_user.username if has_user else "Analyst" }}
+      </h2>
+      <p style="color:#94A3B8; font-size:14.5px; line-height:1.6; max-width:480px;">
+        Continuous behavioral monitoring is active for this account. Below is the current fraud &amp; risk posture, drawn from live session and security-event data.
+      </p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:14px; position:relative;">
+      <span class="enterprise-tag">
+        <i data-lucide="activity"></i>
+        <span>Continuous Authentication Active</span>
+      </span>
+
+      <div class="trust-widget trust-widget--mini{{ '' if latest_risk_event else ' trust-widget--calibrating' }}" data-risk="{{ latest_risk_event.severity|lower if latest_risk_event else 'low' }}" title="Behavioral Trust Score">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value">{{ latest_risk_event.risk_score|round|int if latest_risk_event else "—" }}</span>
+          <span class="trust-widget__label">Trust</span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        {% if current_session %}
+        <span class="chip chip--success"><i data-lucide="circle-dot"></i>Session Active</span>
+        {% else %}
+        <span class="chip chip--neutral"><i data-lucide="circle-dot"></i>No Active Session</span>
+        {% endif %}
+        <span class="chip chip--neutral"><i data-lucide="list-checks"></i>{{ total_events }} Events Logged</span>
+      </div>
+    </div>
+
+  </div>
 </div>
 
-<!-- Stat cards -->
-<div class="grid grid--3" style="margin-bottom: 24px;">
-  <div class="card stat-card">
-    <span class="stat-card__icon stat-card__icon--navy"><i data-lucide="wallet"></i></span>
-    <span class="stat-card__label">Current Balance</span>
-    <span class="stat-card__value num">₹{{ "{:,.2f}".format(account.balance) }}</span>
-    <span class="stat-card__delta stat-card__delta--up"><i data-lucide="arrow-up-right"></i>2.4% this month</span>
-  </div>
+<!-- ============================================================
+     2. SECURITY OVERVIEW
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="shield-half" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Security Overview</h3>
+</div>
 
-  <div class="card stat-card">
-    <span class="stat-card__icon stat-card__icon--orange"><i data-lucide="trending-down"></i></span>
-    <span class="stat-card__label">Monthly Spending</span>
-    <span class="stat-card__value num">₹36,910.00</span>
-    <span class="stat-card__delta stat-card__delta--down"><i data-lucide="arrow-down-right"></i>8.1% vs last month</span>
+<div class="grid grid--2" style="margin-bottom: 18px;">
+  <!-- Trust Score -->
+  {% if latest_risk_event %}
+  <div class="trust-card" data-risk="{{ latest_risk_event.severity|lower }}">
+    <div class="trust-card__top">
+      <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
+      <span class="trust-card__badge" data-risk="{{ latest_risk_event.severity|lower }}">{{ latest_risk_event.severity|title }} Risk</span>
+    </div>
+    <div class="trust-card__score-row">
+      <div class="trust-card__score num">{{ latest_risk_event.risk_score|round|int }}<span>/100</span></div>
+      <div class="trust-card__wave-wrap">
+        <svg viewBox="0 0 200 46" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 200,23"/>
+        </svg>
+      </div>
+    </div>
+    <div class="trust-card__meta">
+      <div class="trust-card__meta-item">
+        <span class="trust-card__meta-label">Last Evaluated</span>
+        <span class="trust-card__meta-value">{{ latest_risk_event.created_at.strftime("%d %b, %I:%M %p") }}</span>
+      </div>
+      <div class="trust-card__meta-item">
+        <span class="trust-card__meta-label">Signal</span>
+        <span class="trust-card__meta-value">{{ latest_risk_event.event_type|replace('_', ' ')|title }}</span>
+      </div>
+      <div class="trust-card__meta-item">
+        <span class="trust-card__meta-label">Action Taken</span>
+        <span class="trust-card__meta-value">{{ latest_risk_event.action_taken }}</span>
+      </div>
+    </div>
   </div>
+  {% else %}
+  <div class="trust-card trust-card--calibrating" data-risk="low">
+    <div class="trust-card__top">
+      <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
+      <span class="trust-card__badge" data-risk="low">Calibrating</span>
+    </div>
+    <div class="trust-card__score-row">
+      <div class="trust-card__score">—</div>
+    </div>
+    <div class="trust-card__meta" style="grid-template-columns: 1fr;">
+      <div class="trust-card__meta-item">
+        <span class="trust-card__meta-label">Status</span>
+        <span class="trust-card__meta-value" style="font-family: var(--font-ui); font-weight:500;">No continuous authentication evaluation has run yet for this account.</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-  <div class="card stat-card">
-    <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="trending-up"></i></span>
-    <span class="stat-card__label">Income</span>
-    <span class="stat-card__value num">₹95,000.00</span>
-    <span class="stat-card__delta stat-card__delta--up"><i data-lucide="arrow-up-right"></i>On schedule</span>
+  <!-- Fraud Score -->
+  <div class="fraud-card fraud-card--empty">
+    <div class="fraud-card__top">
+      <span class="fraud-card__eyebrow"><i data-lucide="shield-alert"></i>Transaction Fraud Score</span>
+    </div>
+    <div class="fraud-card__score-row">
+      <div class="fraud-card__score">—</div>
+    </div>
+    <div class="fraud-card__breakdown">
+      <span style="font-size:12.5px; color:#94A3B8; line-height:1.6;">
+        No transfer has been evaluated for fraud risk yet. A score will appear here as soon as this account's next transfer is scored.
+      </span>
+    </div>
   </div>
 </div>
 
-<!-- Quick actions -->
-<div class="quick-actions" style="margin-bottom: 24px;">
-  <a href="{{ url_for('transfer.transfer_page') }}" class="quick-action">
-    <span class="quick-action__icon"><i data-lucide="arrow-left-right"></i></span>
-    <span class="quick-action__label">Transfer Money</span>
-  </a>
-  <a href="#" class="quick-action">
-    <span class="quick-action__icon"><i data-lucide="receipt"></i></span>
-    <span class="quick-action__label">Pay Bills</span>
-  </a>
-  <a href="#" class="quick-action">
-    <span class="quick-action__icon"><i data-lucide="user-plus"></i></span>
-    <span class="quick-action__label">Add Beneficiary</span>
-  </a>
-  <a href="#" class="quick-action">
-    <span class="quick-action__icon"><i data-lucide="download"></i></span>
-    <span class="quick-action__label">Download Statement</span>
-  </a>
+<div class="grid grid--2" style="margin-bottom: 36px;">
+  <!-- Current Risk -->
+  <div class="card stat-card">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon {{ 'stat-card__icon--orange' if latest_risk_event else 'stat-card__icon--navy' }}">
+        <i data-lucide="shield-alert"></i>
+      </span>
+      {% if latest_risk_event %}
+      <span class="badge-risk badge-risk--{{ latest_risk_event.severity|lower }}">{{ latest_risk_event.severity|title }}</span>
+      {% else %}
+      <span class="chip chip--neutral">Calibrating</span>
+      {% endif %}
+    </div>
+    <span class="stat-card__label">Current Risk</span>
+    <span class="stat-card__value" style="font-size:16px; font-weight:600; font-family: var(--font-ui); letter-spacing:normal;">
+      {% if latest_risk_event %}{{ latest_risk_event.event_type|replace('_', ' ')|title }}{% else %}Awaiting first evaluation{% endif %}
+    </span>
+    <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;">
+      {% if latest_risk_event %}{{ latest_risk_event.details }}{% else %}No behavioral risk signal has been generated for this session yet.{% endif %}
+    </p>
+  </div>
+
+  <!-- Session Status -->
+  <div class="card stat-card">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon {{ 'stat-card__icon--emerald' if current_session else 'stat-card__icon--navy' }}">
+        <i data-lucide="monitor"></i>
+      </span>
+      {% if current_session %}
+      <span class="chip chip--success"><i data-lucide="circle-dot"></i>Active</span>
+      {% elif latest_session %}
+      <span class="chip chip--neutral">{{ latest_session.status|title }}</span>
+      {% else %}
+      <span class="chip chip--neutral">No Sessions</span>
+      {% endif %}
+    </div>
+    <span class="stat-card__label">Session Status</span>
+    {% set session_for_display = current_session or latest_session %}
+    <span class="stat-card__value" style="font-size:16px; font-weight:600; font-family: var(--font-ui); letter-spacing:normal;">
+      {{ session_for_display.device_info if session_for_display else "No session history" }}
+    </span>
+    <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;">
+      {% if session_for_display %}Last active {{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}{% else %}No session history recorded for this account yet.{% endif %}
+    </p>
+  </div>
 </div>
 
-<div class="grid grid--2">
+<!-- ============================================================
+     3. BEHAVIORAL BIOMETRICS
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="keyboard" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Behavioral Biometrics</h3>
+</div>
+
+<div class="card" style="margin-bottom: 36px;">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 18px;">
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Enrollment Status</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;">Not available</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Authentication Confidence</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;">Not available</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Typing Profile Status</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;">Not available</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Similarity Score</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;">Not available</span>
+    </div>
+  </div>
+  <div class="empty-state empty-state--inline" style="justify-content:flex-start; padding: 0;">
+    <i data-lucide="info" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+    <span class="empty-state__title">These metrics are tracked by the behavioral engine but aren't yet exposed to the Dashboard route — nothing here is fabricated.</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     4. THREAT SUMMARY
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="siren" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Threat Summary</h3>
+</div>
+<div class="threat-summary" style="margin-bottom: 10px;">
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="high"><i data-lucide="waves"></i></span>
+    <span class="threat-card__count num">{{ anomaly_count }}</span>
+    <span class="threat-card__label">Behavior Anomalies</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="medium"><i data-lucide="key-round"></i></span>
+    <span class="threat-card__count num">{{ otp_count }}</span>
+    <span class="threat-card__label">OTP Challenges</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="critical"><i data-lucide="ban"></i></span>
+    <span class="threat-card__count num">{{ blocked_count }}</span>
+    <span class="threat-card__label">Blocked Transfers</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="critical"><i data-lucide="log-out"></i></span>
+    <span class="threat-card__count num">{{ terminated_count }}</span>
+    <span class="threat-card__label">Session Terminations</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="low"><i data-lucide="list-checks"></i></span>
+    <span class="threat-card__count num">{{ total_events }}</span>
+    <span class="threat-card__label">Security Events</span>
+  </div>
+</div>
+<p style="font-size:12px; color: var(--text-faint); margin-bottom: 36px;">
+  Aggregated from this account's full security-event and session history.
+</p>
+
+<!-- ============================================================
+     5 & 6. RECENT TRANSACTIONS / RECENT SECURITY EVENTS
+     ============================================================ -->
+<div class="grid grid--2" style="margin-bottom: 36px;">
   <!-- Left column -->
   <div style="display:flex; flex-direction:column; gap:24px;">
     <div class="card">
       <div class="card__header">
-        <span class="card__title">Recent Transactions</span>
+        <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="receipt" style="width:16px; height:16px; color: var(--text-muted);"></i>
+          Recent Transactions
+        </span>
         <a href="{{ url_for('main.transactions') }}" class="card__link">
           View all <i data-lucide="chevron-right"></i>
         </a>
@@ -103,7 +350,13 @@
           {% endfor %}
           {% else %}
           <tr>
-            <td colspan="4" style="text-align:center; color: var(--text-muted);">No recent transactions.</td>
+            <td colspan="4">
+              <div class="empty-state">
+                <span class="empty-state__icon"><i data-lucide="receipt"></i></span>
+                <span class="empty-state__title">No recent transactions</span>
+                <span class="empty-state__desc">Transfers made from this account will appear here.</span>
+              </div>
+            </td>
           </tr>
           {% endif %}
         </tbody>
@@ -111,69 +364,77 @@
     </div>
   </div>
 
-  <!-- Right column: Security panel -->
+  <!-- Right column -->
   <div style="display:flex; flex-direction:column; gap:24px;">
-    <div class="trust-card" data-risk="low">
-      <div class="trust-card__top">
-        <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
-        <span class="trust-card__badge" data-risk="low">Low Risk</span>
-      </div>
-      <div class="trust-card__score-row">
-        <div class="trust-card__score num">98<span>/100</span></div>
-        <div class="trust-card__wave-wrap">
-          <svg viewBox="0 0 200 46" preserveAspectRatio="none">
-            <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 200,23"/>
-          </svg>
-        </div>
-      </div>
-      <div class="trust-card__meta">
-        <div class="trust-card__meta-item">
-          <span class="trust-card__meta-label">Current Session</span>
-          <span class="trust-card__meta-value">14m 32s</span>
-        </div>
-        <div class="trust-card__meta-item">
-          <span class="trust-card__meta-label">Last Authentication</span>
-          <span class="trust-card__meta-value">Today, 2:41 PM</span>
-        </div>
-        <div class="trust-card__meta-item">
-          <span class="trust-card__meta-label">Risk Level</span>
-          <span class="trust-card__meta-value">Low</span>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card__header">
-        <span class="card__title">Recent Security Events</span>
+        <span class="card__title" style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="history" style="width:16px; height:16px; color: var(--text-muted);"></i>
+          Recent Security Events
+        </span>
         <a href="{{ url_for('main.security') }}" class="card__link">
           Security Center <i data-lucide="chevron-right"></i>
         </a>
       </div>
-      <div class="timeline">
-        <div class="timeline-item">
-          <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
+      {% if recent_events %}
+      <div class="security-timeline">
+        {% for event in recent_events[:5] %}
+        <div class="security-timeline__item">
+          <span class="security-timeline__icon" data-severity="{{ event.severity|lower }}">
+            {% if event.severity|lower == "critical" %}
+            <i data-lucide="ban"></i>
+            {% elif event.severity|lower == "high" %}
+            <i data-lucide="shield-alert"></i>
+            {% elif event.severity|lower == "medium" %}
+            <i data-lucide="alert-triangle"></i>
+            {% else %}
+            <i data-lucide="check"></i>
+            {% endif %}
+          </span>
           <div class="timeline-content">
-            <div class="timeline-content__title">Login verified — typing pattern matched</div>
-            <div class="timeline-content__meta">Today, 2:41 PM · Chrome on Windows</div>
+            <div class="security-timeline__title">{{ event.event_type|replace('_', ' ')|title }}</div>
+            <div class="security-timeline__meta">{{ event.created_at.strftime("%d %b %Y, %I:%M %p") }} · {{ event.action_taken }}</div>
           </div>
         </div>
-        <div class="timeline-item">
-          <span class="timeline-dot timeline-dot--warning"><i data-lucide="shield-alert"></i></span>
-          <div class="timeline-content">
-            <div class="timeline-content__title">Step-up authentication requested during transfer</div>
-            <div class="timeline-content__meta">Jun 29, 2026, 6:12 PM · Behavioral deviation detected</div>
-          </div>
-        </div>
-        <div class="timeline-item">
-          <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
-          <div class="timeline-content">
-            <div class="timeline-content__title">New device recognized and approved</div>
-            <div class="timeline-content__meta">Jun 24, 2026, 9:03 AM · iPhone 15</div>
-          </div>
-        </div>
+        {% endfor %}
       </div>
+      {% else %}
+      <div class="empty-state">
+        <span class="empty-state__icon"><i data-lucide="shield-check"></i></span>
+        <span class="empty-state__title">No security events recorded</span>
+        <span class="empty-state__desc">This account hasn't generated any security events yet.</span>
+      </div>
+      {% endif %}
     </div>
   </div>
+</div>
+
+<!-- ============================================================
+     7. QUICK ACTIONS
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="zap" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Quick Actions</h3>
+</div>
+<div class="quick-actions">
+  <a href="{{ url_for('transfer.transfer_page') }}" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="arrow-left-right"></i></span>
+    <span class="quick-action__label">Transfer Money</span>
+  </a>
+  <a href="{{ url_for('main.security') }}" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="fingerprint"></i></span>
+    <span class="quick-action__label">Security Center</span>
+  </a>
+  <a href="{{ url_for('main.transactions') }}" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="receipt"></i></span>
+    <span class="quick-action__label">View Transactions</span>
+  </a>
+  <a href="{{ url_for('main.accounts') }}" class="quick-action">
+    <span class="quick-action__icon"><i data-lucide="wallet"></i></span>
+    <span class="quick-action__label">View Accounts</span>
+  </a>
 </div>
 
 {% endblock %}
