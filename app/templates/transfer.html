@@ -323,7 +323,7 @@
             <div><div>{{ transaction.recipient }}</div><div class="tx-sub">{{ transaction.transaction_type }}</div></div>
           </div>
         </td>
-        <td>{{ transaction.created_at.strftime("%d %b %Y") }}</td>
+        <td>{{ transaction.created_at | localtime }}</td>
         <td>
           {% if transaction.status in ["Completed", "Success", "Verified"] %}
           <span class="pill pill--success"><i data-lucide="check"></i>{{ transaction.status }}</span>

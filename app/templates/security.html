@@ -212,7 +212,7 @@
       {{ session_for_display.device_info if session_for_display else "No session history" }}
     </span>
     <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;">
-      {% if session_for_display %}Last active {{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}{% else %}No session history recorded for this account yet.{% endif %}
+      {% if session_for_display %}Last active {{ session_for_display.last_activity | localtime }}{% else %}No session history recorded for this account yet.{% endif %}
     </p>
   </div>
 </div>
@@ -351,7 +351,7 @@
           <div class="security-timeline__title">{{ event.event_type|replace('_', ' ')|title }}</div>
           <span class="badge-risk badge-risk--{{ event.severity|lower }}">{{ event.severity|title }} · {{ event.risk_score|round|int }}</span>
         </div>
-        <div class="security-timeline__meta">{{ event.created_at.strftime("%d %b %Y, %I:%M %p") }} · {{ event.action_taken }}</div>
+        <div class="security-timeline__meta">{{ event.created_at | localtime }} · {{ event.action_taken }}</div>
         {% if event.details %}
         <div style="font-size:12.5px; color: var(--text-muted); margin-top:4px;">{{ event.details }}</div>
         {% endif %}
@@ -404,7 +404,7 @@
     </div>
     <div style="display:flex; flex-direction:column; gap:6px;">
       <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Last Activity</span>
-      <span style="font-size:14px; font-weight:600;">{{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}</span>
+      <span style="font-size:14px; font-weight:600;">{{ session_for_display.last_activity | localtime }}</span>
     </div>
     <div style="display:flex; flex-direction:column; gap:6px;">
       <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Current Risk</span>

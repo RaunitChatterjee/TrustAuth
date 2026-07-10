@@ -139,14 +139,29 @@ function onKeystrokeEvent(fieldId, events) {
     .then((response) => {
       if (!response.success) {
         console.error(response.message);
+        return;
       }
+
+      // Fetch the live, backend-computed Trust Score instead of using the
+      // client-side simulation.
+      fetch("/api/trust", {
+        method: "GET",
+        credentials: "same-origin",
+      })
+        .then((res) => res.json())
+        .then((trustResponse) => {
+          if (!trustResponse.success) {
+            console.error(trustResponse.message);
+            return;
+          }
+          applyTrustScore(
+            trustResponse.trust_score,
+            trustResponse.risk_level.toLowerCase()
+          );
+        })
+        .catch((err) => console.error(err));
     })
     .catch((err) => console.error(err));
-
-  // Existing UI simulation left intact — will be swapped for real
-  // backend-driven scores once /api/typing returns a trained model's output.
-  const { score, risk } = simulateScoreFromEvents(events);
-  applyTrustScore(score, risk);
 }
 
 /* Simple local heuristic used only for the demo: high variance in dwell

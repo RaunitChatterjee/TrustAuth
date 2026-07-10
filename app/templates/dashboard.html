@@ -131,7 +131,7 @@
     <div class="trust-card__meta">
       <div class="trust-card__meta-item">
         <span class="trust-card__meta-label">Last Evaluated</span>
-        <span class="trust-card__meta-value">{{ latest_risk_event.created_at.strftime("%d %b, %I:%M %p") }}</span>
+        <span class="trust-card__meta-value">{{ latest_risk_event.created_at | localtime }}</span>
       </div>
       <div class="trust-card__meta-item">
         <span class="trust-card__meta-label">Signal</span>
@@ -219,7 +219,7 @@
       {{ session_for_display.device_info if session_for_display else "No session history" }}
     </span>
     <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;">
-      {% if session_for_display %}Last active {{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}{% else %}No session history recorded for this account yet.{% endif %}
+      {% if session_for_display %}Last active {{ session_for_display.last_activity | localtime }}{% else %}No session history recorded for this account yet.{% endif %}
     </p>
   </div>
 </div>
@@ -329,7 +329,7 @@
                 <div><div>{{ transaction.recipient }}</div><div class="tx-sub">{{ transaction.transaction_type }}</div></div>
               </div>
             </td>
-            <td>{{ transaction.created_at.strftime("%d %b %Y") }}</td>
+            <td>{{ transaction.created_at | localtime }}</td>
             <td>
               {% if transaction.status in ["Completed", "Success", "Verified"] %}
               <span class="pill pill--success"><i data-lucide="check"></i>{{ transaction.status }}</span>
@@ -393,7 +393,7 @@
           </span>
           <div class="timeline-content">
             <div class="security-timeline__title">{{ event.event_type|replace('_', ' ')|title }}</div>
-            <div class="security-timeline__meta">{{ event.created_at.strftime("%d %b %Y, %I:%M %p") }} · {{ event.action_taken }}</div>
+            <div class="security-timeline__meta">{{ event.created_at | localtime }} · {{ event.action_taken }}</div>
           </div>
         </div>
         {% endfor %}
