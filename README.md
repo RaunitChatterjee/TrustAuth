@@ -387,7 +387,7 @@ Cybersecurity Student, Manipal University Jaipur
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — add a `LICENSE` file to the repository root to make this effective.
+This project is licensed under the **MIT License** 
 
 <div align="center">
 
