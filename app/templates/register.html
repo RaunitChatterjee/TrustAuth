@@ -5,14 +5,151 @@
 
 {% block page %}
 <div class="auth-shell">
+
+  <!-- ============================================================
+       LEFT SIDE — Enterprise Branding + Behavioral Enrollment Workflow
+       (visual only — no backend logic, no new endpoints)
+       ============================================================ -->
+  <section class="auth-illustration">
+    <div class="auth-illustration__panel" style="width: 380px;">
+
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
+        <span style="width:40px; height:40px; border-radius: var(--r-md); background: var(--risk-low); color: var(--navy); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="shield-check" style="width:21px; height:21px;"></i>
+        </span>
+        <div style="line-height:1.25;">
+          <div style="font-weight:800; font-size:19px; letter-spacing:-0.01em; color:#fff;">TrustAuth</div>
+          <div style="font-size:11.5px; font-weight:600; letter-spacing:0.03em; color:#6EE7B7; text-transform:uppercase;">Enterprise Behavioral Biometrics Platform</div>
+        </div>
+      </div>
+
+      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); margin-bottom: 22px;">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value" style="color:#6EE7B7;">—</span>
+          <span class="trust-widget__label" style="color:#94A3B8;">Building profile</span>
+        </div>
+      </div>
+
+      <p style="font-size:14px; font-weight:700; color:#fff; letter-spacing:-0.01em; margin-bottom:2px;">Behavioral Identity Enrollment</p>
+      <p style="font-size:12.5px; color:#94A3B8; margin-bottom:20px; line-height:1.55;">
+        Registration begins a profile that is continuously refined by how you actually type, move, and interact.
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:26px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="fingerprint" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Behavioral Biometrics</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="activity" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Continuous Authentication</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="radar" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Adaptive Risk Analysis</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="shield-alert" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Transaction Protection</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="monitor-check" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Session Intelligence</span>
+        </div>
+      </div>
+
+      <!-- ---------- Vertical enrollment workflow (visual only) ---------- -->
+      <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top:20px; margin-bottom:22px;">
+        <p style="font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#64748B; margin-bottom:16px;">Enrollment Workflow</p>
+
+        <div style="display:flex; flex-direction:column;">
+          <div style="display:flex; gap:12px;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <span style="width:28px; height:28px; border-radius:50%; background: rgba(110,231,183,0.15); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="user-plus" style="width:14px; height:14px;"></i>
+              </span>
+              <span style="width:1.5px; flex:1; background: rgba(255,255,255,0.12); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom:20px;">
+              <div style="font-size:13px; font-weight:600; color:#fff;">Account Registration</div>
+              <div style="font-size:11.5px; color:#94A3B8;">You are here</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <span style="width:28px; height:28px; border-radius:50%; background: rgba(255,255,255,0.08); color:#94A3B8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="scan-face" style="width:14px; height:14px;"></i>
+              </span>
+              <span style="width:1.5px; flex:1; background: rgba(255,255,255,0.12); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom:20px;">
+              <div style="font-size:13px; font-weight:600; color:#CBD5E1;">Behavioral Profile Creation</div>
+              <div style="font-size:11.5px; color:#64748B;">Begins after your first login</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <span style="width:28px; height:28px; border-radius:50%; background: rgba(255,255,255,0.08); color:#94A3B8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="keyboard" style="width:14px; height:14px;"></i>
+              </span>
+              <span style="width:1.5px; flex:1; background: rgba(255,255,255,0.12); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom:20px;">
+              <div style="font-size:13px; font-weight:600; color:#CBD5E1;">Typing Pattern Enrollment</div>
+              <div style="font-size:11.5px; color:#64748B;">Learned gradually across normal use</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <span style="width:28px; height:28px; border-radius:50%; background: rgba(255,255,255,0.08); color:#94A3B8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="shield-check" style="width:14px; height:14px;"></i>
+              </span>
+            </div>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:#CBD5E1;">Continuous Authentication Ready</div>
+              <div style="font-size:11.5px; color:#64748B;">Baseline established, monitoring active</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
+      </svg>
+      <p class="auth-illustration__caption">
+        <strong>Your typing rhythm becomes your baseline.</strong>
+        Over your first few sessions, TrustAuth quietly learns how you type, so it can recognize you — and notice when it isn't you.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       RIGHT SIDE — Registration Card (backend fields unchanged)
+       ============================================================ -->
   <section class="auth-panel">
     <div class="auth-brand">
       <span class="auth-brand__mark"><i data-lucide="shield-check"></i></span>
       <span class="auth-brand__name">TrustAuth</span>
     </div>
 
-    <h1 class="auth-heading">Create your account</h1>
-    <p class="auth-subheading">It takes less than a minute to get started.</p>
+    <h1 class="auth-heading">Enroll in Behavioral Authentication</h1>
+    <p class="auth-subheading">Create your account to begin building your behavioral biometrics profile.</p>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -61,31 +198,83 @@
       Already have an account? <a href="{{ url_for('auth.login') }}" class="link">Log in</a>
     </p>
 
+    <!-- ============================================================
+         BEHAVIORAL PROFILE INFORMATION — informational only,
+         no backend data, no fabricated scores.
+         ============================================================ -->
+    <div class="card card--compact" style="margin-top: 28px;">
+      <div class="card__header" style="margin-bottom: 14px;">
+        <span class="card__title" style="font-size: 13.5px;">What happens after you register</span>
+      </div>
+
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="fingerprint"></i></span>
+        <div>
+          <div class="recommendation__title">Behavioral Biometrics</div>
+          <div class="recommendation__desc">Your account is paired with a behavioral profile that captures how you naturally interact, not just what you know.</div>
+        </div>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="activity"></i></span>
+        <div>
+          <div class="recommendation__title">Continuous Authentication</div>
+          <div class="recommendation__desc">Once established, your baseline is checked continuously during future sessions — not just at login.</div>
+        </div>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="radar"></i></span>
+        <div>
+          <div class="recommendation__title">Adaptive Fraud Detection</div>
+          <div class="recommendation__desc">Deviations from your baseline are surfaced as risk signals, helping flag account takeover attempts early.</div>
+        </div>
+      </div>
+      <div class="recommendation">
+        <span class="recommendation__icon"><i data-lucide="gauge"></i></span>
+        <div>
+          <div class="recommendation__title">Behavioral Trust Scoring</div>
+          <div class="recommendation__desc">A trust score reflects how closely current activity matches your established behavioral baseline.</div>
+        </div>
+      </div>
+
+      <div class="notice notice--info" style="margin-top: 6px;">
+        <i data-lucide="clock"></i>
+        <span>Your behavioral profile is not created instantly. It is learned gradually as you log in and use TrustAuth normally.</span>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PRIVACY & SECURITY NOTICE — informational only.
+         ============================================================ -->
+    <div class="card card--compact" style="margin-top: 18px;">
+      <div class="card__header" style="margin-bottom: 12px;">
+        <span class="card__title" style="font-size: 13.5px;">Privacy &amp; Security Notice</span>
+        <i data-lucide="lock-keyhole"></i>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <i data-lucide="check-circle" style="width:15px; height:15px; color:var(--risk-low-text); flex-shrink:0; margin-top:2px;"></i>
+          <span style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">Behavioral typing characteristics are securely processed and never shared.</span>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <i data-lucide="check-circle" style="width:15px; height:15px; color:var(--risk-low-text); flex-shrink:0; margin-top:2px;"></i>
+          <span style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">No biometric images, such as fingerprints or facial scans, are ever stored.</span>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <i data-lucide="check-circle" style="width:15px; height:15px; color:var(--risk-low-text); flex-shrink:0; margin-top:2px;"></i>
+          <span style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">Behavioral data is used solely for authentication and account protection.</span>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <i data-lucide="check-circle" style="width:15px; height:15px; color:var(--risk-low-text); flex-shrink:0; margin-top:2px;"></i>
+          <span style="font-size:12.5px; color:var(--text-muted); line-height:1.5;">This data helps detect account takeover attempts against your account.</span>
+        </div>
+      </div>
+    </div>
+
     <div class="auth-footer-note">
       <i data-lucide="activity"></i>
-      <span>Behavioral Authentication Enabled</span>
+      <span>TrustAuth &middot; Enterprise Behavioral Biometrics Platform &middot; Version 1.0</span>
     </div>
   </section>
 
-  <section class="auth-illustration">
-    <div class="auth-illustration__panel">
-      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);">
-        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
-          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
-        </svg>
-        <div class="trust-widget__score">
-          <span class="trust-widget__value" style="color:#6EE7B7;">—</span>
-          <span class="trust-widget__label" style="color:#94A3B8;">Building profile</span>
-        </div>
-      </div>
-      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
-        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
-      </svg>
-      <p class="auth-illustration__caption">
-        <strong>Your typing rhythm becomes your baseline.</strong>
-        Over your first few sessions, TrustAuth quietly learns how you type, so it can recognize you — and notice when it isn't you.
-      </p>
-    </div>
-  </section>
 </div>
 {% endblock %}

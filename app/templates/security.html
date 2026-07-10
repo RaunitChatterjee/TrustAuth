@@ -1,190 +1,789 @@
 {% extends "base.html" %}
 
-{% block title %}Security Center{% endblock %}
-{% block page_title %}Security Center{% endblock %}
+{% block title %}Security Operations Center{% endblock %}
+{% block page_title %}Security Operations Center{% endblock %}
 
 {% block content %}
 
-<div class="trust-card" data-risk="low" style="margin-bottom: 24px;">
-  <div class="trust-card__top">
-    <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
-    <span class="trust-card__badge" data-risk="low">Low Risk</span>
+{#
+  ============================================================================
+  Data derivation notes (read before editing)
+  ============================================================================
+  This route (`main.security`) passes NO variables to this template — see
+  app/main/routes.py. Everything below comes from one of two real sources,
+  exactly like app/templates/dashboard.html:
+
+    1. `current_user`, which Flask-Login already injects into every template
+       context. It carries two real relationships: `security_events` and
+       `sessions` (see models/user.py). This is used for all HISTORICAL /
+       aggregate data below (Threat Summary, Security Timeline, Active
+       Session Intelligence, Security Recommendations).
+
+    2. The three existing, already-deployed JSON endpoints in app/api/routes.py:
+       GET /api/trust    -> live continuous-authentication evaluation
+       GET /api/profile  -> the user's stored behavioral profile
+       GET /api/security-events -> same event history, as JSON (used only as
+                                    a fallback if current_user ever isn't
+                                    populated, e.g. an edge navigation case)
+       These are fetched client-side below because they reflect a LIVE
+       evaluation (trust_engine.evaluate_session / profile_service) that is
+       not stored on any model relationship reachable from current_user —
+       there is no User -> BehaviorProfile relationship (confirmed in
+       models/behavior_profile.py and models/user.py), so this data cannot
+       be read in Jinja without a new query. No new Flask route, endpoint,
+       or backend query has been added anywhere for this page.
+
+  No transaction-risk (fraud) score is ever persisted anywhere reachable
+  from this context (transaction_risk_service.evaluate_transaction_risk()
+  output is only printed to the console in services/transfer_service.py) —
+  Fraud Score below is rendered as an honest empty state, not an invented
+  number. Nothing on this page fabricates a count, score, or event.
+#}
+{% set has_user = current_user is defined and current_user.is_authenticated %}
+{% set sec_events = (current_user.security_events | list) if has_user else [] %}
+{% set sessions_list = (current_user.sessions | list) if has_user else [] %}
+
+{% set all_events = sec_events | sort(attribute='created_at', reverse=True) %}
+
+{% set risk_types = ['CONTINUOUS_AUTH_SUCCESS', 'BEHAVIOR_ANOMALY_DETECTED', 'STEP_UP_AUTH_REQUIRED', 'ACCOUNT_TAKEOVER_DETECTED'] %}
+{% set risk_events = sec_events | selectattr('event_type', 'in', risk_types) | list | sort(attribute='created_at', reverse=True) %}
+{% set latest_risk_event = risk_events[0] if risk_events else none %}
+
+{% set otp_types = ['STEP_UP_AUTH_REQUIRED', 'OTP_VERIFIED', 'OTP_FAILED', 'OTP_RESENT'] %}
+{% set anomaly_count = sec_events | selectattr('event_type', 'equalto', 'BEHAVIOR_ANOMALY_DETECTED') | list | length %}
+{% set otp_count = sec_events | selectattr('event_type', 'in', otp_types) | list | length %}
+{% set blocked_count = sec_events | selectattr('event_type', 'equalto', 'TRANSFER_BLOCKED') | list | length %}
+{% set terminated_count = sessions_list | selectattr('status', 'equalto', 'TERMINATED') | list | length %}
+{% set takeover_count = sec_events | selectattr('event_type', 'equalto', 'ACCOUNT_TAKEOVER_DETECTED') | list | length %}
+{% set total_events = sec_events | length %}
+
+{% set active_sessions = sessions_list | selectattr('status', 'equalto', 'ACTIVE') | list | sort(attribute='last_activity', reverse=True) %}
+{% set current_session = active_sessions[0] if active_sessions else none %}
+{% set latest_session = (sessions_list | sort(attribute='last_activity', reverse=True))[0] if sessions_list else none %}
+{% set session_for_display = current_session or latest_session %}
+
+<!-- ============================================================
+     1. ENTERPRISE HERO
+     ============================================================ -->
+<div class="card--feature" style="padding: 40px 44px; margin-bottom: 28px;">
+  <div style="position:relative; display:flex; justify-content:space-between; align-items:flex-start; gap:36px; flex-wrap:wrap;">
+
+    <div style="max-width:600px;">
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:20px;">
+        <span style="width:46px; height:46px; border-radius: var(--r-md); background: var(--risk-low); color: var(--navy); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="scan-eye" style="width:24px; height:24px;"></i>
+        </span>
+        <div style="line-height:1.25;">
+          <div style="font-weight:800; font-size:20px; letter-spacing:-0.01em; color:#fff;">Security Operations Center</div>
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.03em; color:#6EE7B7; text-transform:uppercase;">Behavioral Biometrics Protection Active</div>
+        </div>
+      </div>
+
+      <h2 style="font-size: 24px; font-weight:800; letter-spacing:-0.02em; color:#fff; margin-bottom:8px;">
+        Enterprise Behavioral Authentication Platform
+      </h2>
+      <p style="color:#94A3B8; font-size:14.5px; line-height:1.6; max-width:520px; margin-bottom: 18px;">
+        This console answers one question for <strong style="color:#E2E8F0;">{{ current_user.username if has_user else "this account" }}</strong>:
+        is the account currently under attack? Every panel below is drawn from live continuous-authentication
+        evaluation and this account's full security-event history — nothing here is simulated.
+      </p>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <span class="enterprise-tag">
+          <i data-lucide="activity"></i>
+          <span>Continuous Authentication Enabled</span>
+        </span>
+        <span class="chip chip--neutral" id="heroEngineChip">
+          <i data-lucide="loader-2"></i>
+          <span>Evaluating session…</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:14px; position:relative;">
+      <div class="trust-widget trust-widget--mini trust-widget--calibrating" data-risk="low" id="heroTrustWidget" title="Live Behavioral Trust Score">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value" id="heroTrustValue">—</span>
+          <span class="trust-widget__label">Trust</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        {% if current_session %}
+        <span class="chip chip--success"><i data-lucide="circle-dot"></i>Session Active</span>
+        {% else %}
+        <span class="chip chip--neutral"><i data-lucide="circle-dot"></i>No Active Session</span>
+        {% endif %}
+        <span class="chip chip--neutral"><i data-lucide="list-checks"></i>{{ total_events }} Events Logged</span>
+      </div>
+    </div>
+
   </div>
-  <div class="trust-card__score-row">
-    <div class="trust-card__score num">98<span>/100</span></div>
-    <div class="trust-card__wave-wrap">
-      <svg viewBox="0 0 200 46" preserveAspectRatio="none">
-        <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 120,18 130,28 140,23 200,23"/>
-      </svg>
+</div>
+
+<!-- ============================================================
+     2. SECURITY OVERVIEW
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="shield-half" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Security Overview</h3>
+</div>
+
+<div class="grid grid--2" style="margin-bottom: 18px;">
+  <!-- Trust Score (live, via GET /api/trust) -->
+  <div class="trust-card trust-card--calibrating" data-risk="low" id="trustCard">
+    <div class="trust-card__top">
+      <span class="trust-card__eyebrow"><i data-lucide="fingerprint"></i>Behavioral Trust Score</span>
+      <span class="trust-card__badge" data-risk="low" id="trustCardBadge">Evaluating…</span>
+    </div>
+    <div class="trust-card__score-row">
+      <div class="trust-card__score num" id="trustCardScore">
+        <span class="skeleton skeleton--title" style="display:inline-block; width:70px; height:28px;"></span>
+      </div>
+      <div class="trust-card__wave-wrap">
+        <svg viewBox="0 0 200 46" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,23 20,23 30,10 40,38 50,14 60,23 80,23 90,16 100,30 110,23 120,18 130,28 140,23 200,23"/>
+        </svg>
+      </div>
+    </div>
+    <div class="trust-card__meta" id="trustCardMeta" style="grid-template-columns: 1fr;">
+      <div class="trust-card__meta-item">
+        <span class="trust-card__meta-label">Status</span>
+        <span class="trust-card__meta-value" style="font-family: var(--font-ui); font-weight:500;">Contacting the risk engine…</span>
+      </div>
     </div>
   </div>
-  <div class="trust-card__meta">
-    <div class="trust-card__meta-item">
-      <span class="trust-card__meta-label">Current Session</span>
-      <span class="trust-card__meta-value">18m 04s · Chrome / Windows</span>
+
+  <!-- Fraud Score — no persisted data source exists anywhere in this codebase -->
+  <div class="fraud-card fraud-card--empty">
+    <div class="fraud-card__top">
+      <span class="fraud-card__eyebrow"><i data-lucide="shield-alert"></i>Transaction Fraud Score</span>
     </div>
-    <div class="trust-card__meta-item">
-      <span class="trust-card__meta-label">Last Authentication</span>
-      <span class="trust-card__meta-value">Today, 2:41 PM</span>
+    <div class="fraud-card__score-row">
+      <div class="fraud-card__score">—</div>
     </div>
-    <div class="trust-card__meta-item">
-      <span class="trust-card__meta-label">Behavioral Model</span>
-      <span class="trust-card__meta-value">Calibrated · 42 sessions</span>
+    <div class="fraud-card__breakdown">
+      <span style="font-size:12.5px; color:#94A3B8; line-height:1.6;">
+        No transfer has been evaluated for fraud risk yet. A score will appear here as soon as this
+        account's next transfer is scored by the transaction risk engine.
+      </span>
     </div>
   </div>
 </div>
 
-<div class="grid grid--2" style="margin-bottom: 24px;">
-  <div class="card">
-    <div class="card__header">
-      <span class="card__title">Login History</span>
+<div class="grid grid--2" style="margin-bottom: 36px;">
+  <!-- Current Risk (live, via GET /api/trust) -->
+  <div class="card stat-card">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--navy" id="currentRiskIcon">
+        <i data-lucide="shield-alert"></i>
+      </span>
+      <span class="chip chip--neutral" id="currentRiskBadge">Evaluating</span>
     </div>
-    <table class="table">
-      <thead>
-        <tr><th>Date & Time</th><th>Device</th><th>Location</th><th>Result</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Jul 05, 2026 · 2:41 PM</td>
-          <td>Chrome / Windows</td>
-          <td>Delhi, IN</td>
-          <td><span class="pill pill--success"><i data-lucide="check"></i>Verified</span></td>
-        </tr>
-        <tr>
-          <td>Jun 29, 2026 · 6:12 PM</td>
-          <td>Chrome / Windows</td>
-          <td>Delhi, IN</td>
-          <td><span class="pill pill--warning"><i data-lucide="shield-alert"></i>Step-up used</span></td>
-        </tr>
-        <tr>
-          <td>Jun 24, 2026 · 9:03 AM</td>
-          <td>Safari / iPhone 15</td>
-          <td>Gurugram, IN</td>
-          <td><span class="pill pill--success"><i data-lucide="check"></i>Verified</span></td>
-        </tr>
-        <tr>
-          <td>Jun 18, 2026 · 11:47 PM</td>
-          <td>Firefox / Linux</td>
-          <td>Unrecognized region</td>
-          <td><span class="pill pill--danger"><i data-lucide="x"></i>Blocked</span></td>
-        </tr>
-      </tbody>
-    </table>
+    <span class="stat-card__label">Current Risk</span>
+    <span class="stat-card__value" style="font-size:16px; font-weight:600; font-family: var(--font-ui); letter-spacing:normal;" id="currentRiskValue">
+      Contacting risk engine…
+    </span>
+    <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;" id="currentRiskDetail">
+      Live evaluation from GET /api/trust for this session's typing behavior.
+    </p>
   </div>
 
-  <div class="card">
-    <div class="card__header">
-      <span class="card__title">Devices</span>
+  <!-- Session Status (current_user.sessions relationship) -->
+  <div class="card stat-card">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon {{ 'stat-card__icon--emerald' if current_session else 'stat-card__icon--navy' }}">
+        <i data-lucide="monitor"></i>
+      </span>
+      {% if current_session %}
+      <span class="chip chip--success"><i data-lucide="circle-dot"></i>Active</span>
+      {% elif latest_session %}
+      <span class="chip chip--neutral">{{ latest_session.status|title }}</span>
+      {% else %}
+      <span class="chip chip--neutral">No Sessions</span>
+      {% endif %}
     </div>
-    <div class="device-row">
+    <span class="stat-card__label">Session Status</span>
+    <span class="stat-card__value" style="font-size:16px; font-weight:600; font-family: var(--font-ui); letter-spacing:normal;">
+      {{ session_for_display.device_info if session_for_display else "No session history" }}
+    </span>
+    <p style="font-size:12.5px; color: var(--text-muted); line-height:1.5; margin-top:2px;">
+      {% if session_for_display %}Last active {{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}{% else %}No session history recorded for this account yet.{% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     3. THREAT SUMMARY
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="siren" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Threat Summary</h3>
+</div>
+<div class="threat-summary" style="margin-bottom: 10px;">
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="high"><i data-lucide="waves"></i></span>
+    <span class="threat-card__count num">{{ anomaly_count }}</span>
+    <span class="threat-card__label">Behavior Anomalies</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="medium"><i data-lucide="key-round"></i></span>
+    <span class="threat-card__count num">{{ otp_count }}</span>
+    <span class="threat-card__label">OTP Challenges</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="critical"><i data-lucide="ban"></i></span>
+    <span class="threat-card__count num">{{ blocked_count }}</span>
+    <span class="threat-card__label">Blocked Transfers</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="critical"><i data-lucide="log-out"></i></span>
+    <span class="threat-card__count num">{{ terminated_count }}</span>
+    <span class="threat-card__label">Session Terminations</span>
+  </div>
+  <div class="threat-card">
+    <span class="threat-card__icon" data-tint="critical"><i data-lucide="skull"></i></span>
+    <span class="threat-card__count num">{{ takeover_count }}</span>
+    <span class="threat-card__label">Account Takeover Alerts</span>
+  </div>
+</div>
+<p style="font-size:12px; color: var(--text-faint); margin-bottom: 36px;">
+  Aggregated from this account's full security-event and session history — {{ total_events }} events logged in total.
+</p>
+
+<!-- ============================================================
+     4. BEHAVIORAL AUTHENTICATION
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="keyboard" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Behavioral Authentication</h3>
+</div>
+
+<div class="card" style="margin-bottom: 36px;">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 14px;">
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Enrollment Status</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;" id="baEnrollment">
+        <i data-lucide="loader-2"></i><span>Checking…</span>
+      </span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Behavior Monitoring</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;" id="baMonitoring">
+        <i data-lucide="loader-2"></i><span>Checking…</span>
+      </span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Authentication Confidence</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;" id="baConfidence">
+        <i data-lucide="loader-2"></i><span>Checking…</span>
+      </span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Typing Profile</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;" id="baTyping">
+        <i data-lucide="loader-2"></i><span>Checking…</span>
+      </span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px; padding:16px 18px; background: var(--surface-alt); border-radius: var(--r-md);">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Similarity</span>
+      <span class="chip chip--neutral" style="align-self:flex-start;" id="baSimilarity">
+        <i data-lucide="loader-2"></i><span>Checking…</span>
+      </span>
+    </div>
+  </div>
+
+  <div id="baProgressWrap" style="display:none; margin-bottom: 12px;">
+    <div class="progress">
+      <div class="progress__row">
+        <span class="progress__label">Enrollment Progress</span>
+        <span class="progress__value" id="baProgressValue">0 / 20 keys</span>
+      </div>
+      <div class="progress__track">
+        <div class="progress__fill progress__fill--medium" id="baProgressFill" style="width:0%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state empty-state--inline" style="justify-content:flex-start; padding: 0;" id="baFootnote">
+    <i data-lucide="info" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>
+    <span class="empty-state__title">Loading behavioral profile from GET /api/profile and GET /api/trust…</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     5. SECURITY TIMELINE
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="history" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Security Timeline</h3>
+  <span style="font-size:12px; color: var(--text-faint);">— every event recorded for this account</span>
+</div>
+
+<div class="card" style="margin-bottom: 36px;">
+  {% if all_events %}
+  <div class="security-timeline" style="max-height: 560px; overflow-y: auto;">
+    {% for event in all_events %}
+    <div class="security-timeline__item">
+      <span class="security-timeline__icon" data-severity="{{ event.severity|lower }}">
+        {% if event.severity|lower == "critical" %}
+        <i data-lucide="ban"></i>
+        {% elif event.severity|lower == "high" %}
+        <i data-lucide="shield-alert"></i>
+        {% elif event.severity|lower == "medium" %}
+        <i data-lucide="alert-triangle"></i>
+        {% else %}
+        <i data-lucide="check"></i>
+        {% endif %}
+      </span>
+      <div class="timeline-content" style="flex:1;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div class="security-timeline__title">{{ event.event_type|replace('_', ' ')|title }}</div>
+          <span class="badge-risk badge-risk--{{ event.severity|lower }}">{{ event.severity|title }} · {{ event.risk_score|round|int }}</span>
+        </div>
+        <div class="security-timeline__meta">{{ event.created_at.strftime("%d %b %Y, %I:%M %p") }} · {{ event.action_taken }}</div>
+        {% if event.details %}
+        <div style="font-size:12.5px; color: var(--text-muted); margin-top:4px;">{{ event.details }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-state__icon"><i data-lucide="shield-check"></i></span>
+    <span class="empty-state__title">No security events recorded</span>
+    <span class="empty-state__desc">This account hasn't generated any security events yet. Every login, step-up challenge, and transfer decision will be logged here.</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ============================================================
+     6. ACTIVE SESSION INTELLIGENCE
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="radar" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Active Session Intelligence</h3>
+</div>
+
+<div class="card" style="margin-bottom: 36px;">
+  {% if session_for_display %}
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+    <div class="device-row" style="border:none; padding:0;">
       <span class="device-icon"><i data-lucide="monitor"></i></span>
       <div class="device-info">
-        <div class="device-info__name">Windows PC — Chrome</div>
-        <div class="device-info__meta">This device · Last active now</div>
+        <div class="device-info__name">Current Session</div>
+        <div class="device-info__meta">Session #{{ session_for_display.id }}</div>
       </div>
       <div class="device-row__spacer"></div>
-      <span class="pill pill--success">Trusted</span>
+      {% if current_session %}
+      <span class="pill pill--success">Active</span>
+      {% else %}
+      <span class="pill pill--warning">{{ session_for_display.status|title }}</span>
+      {% endif %}
     </div>
-    <div class="device-row">
-      <span class="device-icon"><i data-lucide="smartphone"></i></span>
-      <div class="device-info">
-        <div class="device-info__name">iPhone 15 — Safari</div>
-        <div class="device-info__meta">Last active 3 days ago</div>
-      </div>
-      <div class="device-row__spacer"></div>
-      <span class="pill pill--success">Trusted</span>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Device / Browser</span>
+      <span style="font-size:14px; font-weight:600;">{{ session_for_display.device_info or "Unknown device" }}</span>
     </div>
-    <div class="device-row">
-      <span class="device-icon"><i data-lucide="laptop"></i></span>
-      <div class="device-info">
-        <div class="device-info__name">Linux — Firefox</div>
-        <div class="device-info__meta">Blocked · unrecognized region</div>
-      </div>
-      <div class="device-row__spacer"></div>
-      <span class="pill pill--danger">Revoked</span>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Session Status</span>
+      <span style="font-size:14px; font-weight:600;">{{ session_for_display.status|title }}</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Last Activity</span>
+      <span style="font-size:14px; font-weight:600;">{{ session_for_display.last_activity.strftime("%d %b, %I:%M %p") }}</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-faint);">Current Risk</span>
+      <span class="chip chip--neutral" id="sessionCurrentRisk" style="align-self:flex-start;">Evaluating…</span>
+    </div>
+  </div>
+  {% if session_for_display.ip_address %}
+  <p style="font-size:12px; color: var(--text-faint); margin-top:16px;">Origin IP on record: {{ session_for_display.ip_address }}</p>
+  {% endif %}
+  {% else %}
+  <div class="empty-state">
+    <span class="empty-state__icon"><i data-lucide="monitor-off"></i></span>
+    <span class="empty-state__title">No session history recorded</span>
+    <span class="empty-state__desc">Session intelligence will appear here once this account has logged in.</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ============================================================
+     7. DETECTION ENGINE STATUS
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="server-cog" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Detection Engine Status</h3>
+  <span style="font-size:12px; color: var(--text-faint);">— informational, platform-level</span>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 36px;">
+  <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="fingerprint"></i></span>
+      <span class="chip chip--success"><i data-lucide="check"></i>Online</span>
+    </div>
+    <span style="font-size:13.5px; font-weight:700;">Behavioral Biometrics Engine</span>
+    <span style="font-size:12px; color: var(--text-muted); line-height:1.5;">Extracts dwell / flight-time keystroke features per session.</span>
+  </div>
+  <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="activity"></i></span>
+      <span class="chip chip--success"><i data-lucide="check"></i>Online</span>
+    </div>
+    <span style="font-size:13.5px; font-weight:700;">Continuous Authentication Engine</span>
+    <span style="font-size:12px; color: var(--text-muted); line-height:1.5;">Re-evaluates typing similarity against the enrolled baseline.</span>
+  </div>
+  <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="gauge"></i></span>
+      <span class="chip chip--success"><i data-lucide="check"></i>Online</span>
+    </div>
+    <span style="font-size:13.5px; font-weight:700;">Adaptive Risk Engine</span>
+    <span style="font-size:12px; color: var(--text-muted); line-height:1.5;">Converts similarity into a trust score and LOW–CRITICAL risk tier.</span>
+  </div>
+  <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="receipt"></i></span>
+      <span class="chip chip--success"><i data-lucide="check"></i>Online</span>
+    </div>
+    <span style="font-size:13.5px; font-weight:700;">Transaction Monitoring</span>
+    <span style="font-size:12px; color: var(--text-muted); line-height:1.5;">Screens transfers for behavioral and risk anomalies.</span>
+  </div>
+  <div class="card" style="padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="stat-card__icon stat-card__icon--emerald"><i data-lucide="key-round"></i></span>
+      <span class="chip chip--success"><i data-lucide="check"></i>Online</span>
+    </div>
+    <span style="font-size:13.5px; font-weight:700;">Step-up Authentication</span>
+    <span style="font-size:12px; color: var(--text-muted); line-height:1.5;">Requests OTP verification when risk crosses the trust threshold.</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     8. SECURITY RECOMMENDATIONS
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="clipboard-check" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Security Recommendations</h3>
+</div>
+
+<div class="card" style="margin-bottom: 36px;">
+  {% set recs = [] %}
+  {% if takeover_count > 0 %}
+    {% set _ = recs.append({"icon": "log-out", "title": "Terminate this session", "desc": "An account takeover signal was logged for this account. If you don't recognize this activity, end the active session immediately."}) %}
+  {% endif %}
+  {% if blocked_count > 0 %}
+    {% set _ = recs.append({"icon": "history", "title": "Review recent events", "desc": blocked_count ~ " transfer(s) were blocked by the risk engine. Confirm each was expected before retrying."}) %}
+  {% endif %}
+  {% if anomaly_count > 0 %}
+    {% set _ = recs.append({"icon": "keyboard", "title": "Re-enroll your behavioral profile", "desc": "Behavior anomalies were detected against your current baseline. If you've changed keyboards or hands, recalibrate your typing profile."}) %}
+  {% endif %}
+  {% if not recs %}
+    {% set _ = recs.append({"icon": "check-circle", "title": "Continue monitoring", "desc": "No action currently required. Continuous authentication is active and no risk signals have been raised for this account."}) %}
+  {% endif %}
+
+  {% for rec in recs %}
+  <div class="recommendation">
+    <span class="recommendation__icon"><i data-lucide="{{ rec.icon }}"></i></span>
+    <div>
+      <div class="recommendation__title">{{ rec.title }}</div>
+      <div class="recommendation__desc">{{ rec.desc }}</div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="recommendation" id="baRecommendation" style="display:none;">
+    <span class="recommendation__icon"><i data-lucide="fingerprint"></i></span>
+    <div>
+      <div class="recommendation__title" id="baRecommendationTitle">—</div>
+      <div class="recommendation__desc" id="baRecommendationDesc">—</div>
     </div>
   </div>
 </div>
 
-<div class="grid grid--2">
-  <div class="card">
-    <div class="card__header">
-      <span class="card__title">Security Timeline</span>
-    </div>
-    <div class="timeline">
-      <div class="timeline-item">
-        <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
-        <div class="timeline-content">
-          <div class="timeline-content__title">Login verified — typing pattern matched baseline</div>
-          <div class="timeline-content__meta">Today, 2:41 PM</div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot timeline-dot--warning"><i data-lucide="shield-alert"></i></span>
-        <div class="timeline-content">
-          <div class="timeline-content__title">Step-up authentication triggered mid-transfer</div>
-          <div class="timeline-content__meta">Jun 29, 2026, 6:12 PM · Keystroke deviation of 34%</div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot timeline-dot--danger"><i data-lucide="ban"></i></span>
-        <div class="timeline-content">
-          <div class="timeline-content__title">Login attempt blocked — behavioral mismatch</div>
-          <div class="timeline-content__meta">Jun 18, 2026, 11:47 PM · Unrecognized region + failed re-auth</div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <span class="timeline-dot timeline-dot--success"><i data-lucide="check"></i></span>
-        <div class="timeline-content">
-          <div class="timeline-content__title">New device approved via step-up verification</div>
-          <div class="timeline-content__meta">Jun 24, 2026, 9:03 AM</div>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- ============================================================
+     9. MITRE-STYLE DETECTION FLOW (visual only, no backend logic)
+     ============================================================ -->
+<div style="display:flex; align-items:center; gap:10px; margin-bottom: 16px;">
+  <span style="width:28px; height:28px; border-radius: var(--r-sm); background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+    <i data-lucide="workflow" style="width:15px; height:15px;"></i>
+  </span>
+  <h3 style="font-size: 13px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color: var(--text-muted);">Detection Flow</h3>
+</div>
 
-  <div style="display:flex; flex-direction:column; gap:24px;">
-    <div class="card">
-      <div class="card__header">
-        <span class="card__title">Recent Alerts</span>
-      </div>
-      <div class="notice notice--info" style="margin-bottom: 12px;">
-        <i data-lucide="shield-alert"></i>
-        <span>Unusual typing rhythm detected during your last transfer. We asked for extra verification, and it was completed successfully.</span>
-      </div>
-      <div class="notice notice--success">
-        <i data-lucide="check-circle"></i>
-        <span>Login blocked from an unrecognized region on Jun 18. No further action needed.</span>
-      </div>
+<div class="card" style="margin-bottom: 8px;">
+  <div style="display:flex; align-items:stretch; gap:8px; flex-wrap:wrap; justify-content:center;">
+    {% set flow_steps = [
+      ("keyboard", "Behavior Analysis", "Keystroke features extracted per session"),
+      ("gauge", "Risk Evaluation", "Similarity converted to trust score"),
+      ("key-round", "Step-up Authentication", "OTP requested if risk crosses threshold"),
+      ("arrow-left-right", "Transfer Protection", "Transfers scored before authorization"),
+      ("log-out", "Session Protection", "Session terminated on critical risk")
+    ] %}
+    {% for icon, title, desc in flow_steps %}
+    <div style="flex:1; min-width:160px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding: 18px 14px; {% if not loop.last %}border-right:1px dashed var(--border);{% endif %}">
+      <span style="width:38px; height:38px; border-radius:50%; background: var(--navy-soft); color: var(--navy); display:flex; align-items:center; justify-content:center;">
+        <i data-lucide="{{ icon }}" style="width:18px; height:18px;"></i>
+      </span>
+      <span style="font-size:13px; font-weight:700;">{{ title }}</span>
+      <span style="font-size:11.5px; color: var(--text-muted); line-height:1.4;">{{ desc }}</span>
     </div>
-
-    <div class="card">
-      <div class="card__header">
-        <span class="card__title">Recommendations</span>
-      </div>
-      <div class="recommendation">
-        <span class="recommendation__icon"><i data-lucide="smartphone"></i></span>
-        <div>
-          <div class="recommendation__title">Review your trusted devices</div>
-          <div class="recommendation__desc">Remove devices you no longer use to reduce your attack surface.</div>
-        </div>
-      </div>
-      <div class="recommendation">
-        <span class="recommendation__icon"><i data-lucide="keyboard"></i></span>
-        <div>
-          <div class="recommendation__title">Recalibrate your typing profile</div>
-          <div class="recommendation__desc">If you've changed keyboards recently, refresh your behavioral baseline for fewer step-up prompts.</div>
-        </div>
-      </div>
-      <div class="recommendation">
-        <span class="recommendation__icon"><i data-lucide="bell-ring"></i></span>
-        <div>
-          <div class="recommendation__title">Enable SMS alerts for step-up events</div>
-          <div class="recommendation__desc">Get notified immediately whenever behavioral verification is requested.</div>
-        </div>
-      </div>
+    {% if not loop.last %}
+    <div style="display:flex; align-items:center; color: var(--text-faint);">
+      <i data-lucide="chevron-right" style="width:16px; height:16px;"></i>
     </div>
+    {% endif %}
+    {% endfor %}
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+
+  function riskClass(riskLevel) {
+    if (!riskLevel) return "low";
+    var r = riskLevel.toLowerCase();
+    if (r === "enrolling") return "low";
+    return r;
+  }
+
+  function chipClassForRisk(risk) {
+    if (risk === "low") return "chip chip--success";
+    if (risk === "medium") return "chip chip--warning";
+    if (risk === "high" || risk === "critical") return "chip chip--danger";
+    return "chip chip--neutral";
+  }
+
+  function setIcon(container) {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons({ root: container || document });
+    }
+  }
+
+  var trustResult = null;
+  var profileResult = null;
+
+  function renderTrustUnavailable(message) {
+    var badge = document.getElementById("trustCardBadge");
+    var score = document.getElementById("trustCardScore");
+    var meta = document.getElementById("trustCardMeta");
+    var hero = document.getElementById("heroTrustWidget");
+    var heroValue = document.getElementById("heroTrustValue");
+    var heroChip = document.getElementById("heroEngineChip");
+    var riskBadge = document.getElementById("currentRiskBadge");
+    var riskValue = document.getElementById("currentRiskValue");
+    var riskDetail = document.getElementById("currentRiskDetail");
+    var sessionRisk = document.getElementById("sessionCurrentRisk");
+
+    if (badge) { badge.textContent = "Unavailable"; badge.setAttribute("data-risk", "low"); }
+    if (score) score.textContent = "—";
+    if (meta) meta.innerHTML =
+      '<div class="trust-card__meta-item"><span class="trust-card__meta-label">Status</span>' +
+      '<span class="trust-card__meta-value" style="font-family: var(--font-ui); font-weight:500;">' +
+      (message || "No active session found for this account.") + '</span></div>';
+    if (hero) hero.setAttribute("data-risk", "low");
+    if (heroValue) heroValue.textContent = "—";
+    if (heroChip) heroChip.innerHTML = '<i data-lucide="circle-slash"></i><span>No live session to evaluate</span>';
+    if (riskBadge) { riskBadge.className = "chip chip--neutral"; riskBadge.textContent = "N/A"; }
+    if (riskValue) riskValue.textContent = "No active session";
+    if (riskDetail) riskDetail.textContent = message || "No active session found for this account.";
+    if (sessionRisk) { sessionRisk.className = "chip chip--neutral"; sessionRisk.textContent = "N/A"; }
+    setIcon();
+  }
+
+  function renderTrust(data) {
+    trustResult = data;
+    var risk = riskClass(data.risk_level);
+    var badge = document.getElementById("trustCardBadge");
+    var score = document.getElementById("trustCardScore");
+    var meta = document.getElementById("trustCardMeta");
+    var card = document.getElementById("trustCard");
+    var hero = document.getElementById("heroTrustWidget");
+    var heroValue = document.getElementById("heroTrustValue");
+    var heroChip = document.getElementById("heroEngineChip");
+    var riskIcon = document.getElementById("currentRiskIcon");
+    var riskBadge = document.getElementById("currentRiskBadge");
+    var riskValue = document.getElementById("currentRiskValue");
+    var riskDetail = document.getElementById("currentRiskDetail");
+    var sessionRisk = document.getElementById("sessionCurrentRisk");
+    var confidence = document.getElementById("baConfidence");
+    var similarity = document.getElementById("baSimilarity");
+
+    if (card) { card.classList.remove("trust-card--calibrating"); card.setAttribute("data-risk", risk); }
+
+    if (data.risk_level === "ENROLLING") {
+      if (badge) { badge.textContent = "Enrolling"; badge.setAttribute("data-risk", "low"); }
+      if (score) score.innerHTML = "—";
+      if (meta) meta.innerHTML =
+        '<div class="trust-card__meta-item"><span class="trust-card__meta-label">Status</span>' +
+        '<span class="trust-card__meta-value" style="font-family: var(--font-ui); font-weight:500;">Collecting baseline keystrokes — ' +
+        (data.keys_collected != null ? data.keys_collected : "0") + ' / ' +
+        (data.keys_required != null ? data.keys_required : "20") + ' keys captured.</span></div>';
+      if (heroValue) heroValue.textContent = "—";
+      if (heroChip) heroChip.innerHTML = '<i data-lucide="loader-2"></i><span>Behavioral baseline enrolling</span>';
+      if (riskBadge) { riskBadge.className = "chip chip--neutral"; riskBadge.textContent = "Enrolling"; }
+      if (riskValue) riskValue.textContent = "Baseline not yet established";
+      if (riskDetail) riskDetail.textContent = "Continue using the app normally — trust scoring begins once enrollment completes.";
+      if (sessionRisk) { sessionRisk.className = "chip chip--neutral"; sessionRisk.textContent = "Enrolling"; }
+
+      var pctEnroll = data.keys_required ? Math.min(100, Math.round(100 * (data.keys_collected || 0) / data.keys_required)) : 0;
+      var progWrap = document.getElementById("baProgressWrap");
+      var progFill = document.getElementById("baProgressFill");
+      var progValue = document.getElementById("baProgressValue");
+      if (progWrap) progWrap.style.display = "block";
+      if (progFill) progFill.style.width = pctEnroll + "%";
+      if (progValue) progValue.textContent = (data.keys_collected || 0) + " / " + (data.keys_required || 20) + " keys";
+    } else {
+      if (badge) { badge.textContent = (data.risk_level ? data.risk_level.charAt(0) + data.risk_level.slice(1).toLowerCase() : "Unknown") + " Risk"; badge.setAttribute("data-risk", risk); }
+      if (score) score.innerHTML = Math.round(data.trust_score) + '<span>/100</span>';
+      if (meta) meta.innerHTML =
+        '<div class="trust-card__meta-item"><span class="trust-card__meta-label">Similarity</span>' +
+        '<span class="trust-card__meta-value">' + Math.round(data.similarity) + '%</span></div>' +
+        '<div class="trust-card__meta-item"><span class="trust-card__meta-label">Risk Level</span>' +
+        '<span class="trust-card__meta-value">' + data.risk_level.charAt(0) + data.risk_level.slice(1).toLowerCase() + '</span></div>';
+      if (heroValue) heroValue.textContent = Math.round(data.trust_score);
+      if (hero) hero.setAttribute("data-risk", risk);
+      if (heroChip) heroChip.innerHTML = '<i data-lucide="shield-check"></i><span>Session evaluated · ' + risk.toUpperCase() + ' risk</span>';
+      if (riskIcon) riskIcon.className = "stat-card__icon " + (risk === "low" ? "stat-card__icon--emerald" : "stat-card__icon--orange");
+      if (riskBadge) { riskBadge.className = "badge-risk badge-risk--" + risk; riskBadge.textContent = data.risk_level.charAt(0) + data.risk_level.slice(1).toLowerCase(); }
+      if (riskValue) riskValue.textContent = "Trust score " + Math.round(data.trust_score) + "/100";
+      if (riskDetail) riskDetail.textContent = "Live evaluation: " + Math.round(data.similarity) + "% similarity to enrolled baseline.";
+      if (sessionRisk) { sessionRisk.className = "badge-risk badge-risk--" + risk; sessionRisk.textContent = data.risk_level.charAt(0) + data.risk_level.slice(1).toLowerCase(); }
+
+      if (confidence) confidence.innerHTML = '<span>' + Math.round(data.trust_score) + '% confidence</span>';
+      if (confidence) confidence.className = "chip " + chipClassForRisk(risk).replace("chip ", "");
+      if (similarity) similarity.innerHTML = '<span>' + Math.round(data.similarity) + '% match</span>';
+      if (similarity) similarity.className = "chip " + chipClassForRisk(risk).replace("chip ", "");
+
+      var progWrap2 = document.getElementById("baProgressWrap");
+      if (progWrap2) progWrap2.style.display = "none";
+    }
+    setIcon();
+    maybeAddBehavioralRecommendation();
+  }
+
+  function renderProfileUnavailable(message) {
+    var enrollment = document.getElementById("baEnrollment");
+    var monitoring = document.getElementById("baMonitoring");
+    var typing = document.getElementById("baTyping");
+    var footnote = document.getElementById("baFootnote");
+
+    if (enrollment) enrollment.innerHTML = '<i data-lucide="circle-slash"></i><span>Not available</span>';
+    if (monitoring) monitoring.innerHTML = '<i data-lucide="circle-slash"></i><span>Not monitoring</span>';
+    if (typing) typing.innerHTML = '<i data-lucide="circle-slash"></i><span>Not available</span>';
+    if (footnote) footnote.innerHTML =
+      '<i data-lucide="info" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>' +
+      '<span class="empty-state__title">' + (message || "No behavioral profile is available for this account yet.") + '</span>';
+    setIcon();
+  }
+
+  function renderProfile(data) {
+    profileResult = data;
+    var enrollment = document.getElementById("baEnrollment");
+    var monitoring = document.getElementById("baMonitoring");
+    var typing = document.getElementById("baTyping");
+    var footnote = document.getElementById("baFootnote");
+
+    if (data.is_enrolled) {
+      if (enrollment) enrollment.innerHTML = '<i data-lucide="check"></i><span>Enrolled</span>';
+      if (enrollment) enrollment.className = "chip chip--success";
+      if (monitoring) monitoring.innerHTML = '<i data-lucide="activity"></i><span>Active</span>';
+      if (monitoring) monitoring.className = "chip chip--success";
+      if (typing) typing.innerHTML = '<span>' + Math.round(data.typing_speed) + ' keys/min · ' + data.total_keys + ' keys baseline</span>';
+      if (typing) typing.className = "chip chip--neutral";
+      if (footnote) footnote.innerHTML =
+        '<i data-lucide="info" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>' +
+        '<span class="empty-state__title">Avg dwell ' + data.avg_dwell_time.toFixed(1) + 'ms · avg flight ' + data.avg_flight_time.toFixed(1) + 'ms, from GET /api/profile.</span>';
+    } else {
+      if (enrollment) enrollment.innerHTML = '<i data-lucide="loader-2"></i><span>Enrolling</span>';
+      if (enrollment) enrollment.className = "chip chip--warning";
+      if (monitoring) monitoring.innerHTML = '<i data-lucide="loader-2"></i><span>Collecting baseline</span>';
+      if (monitoring) monitoring.className = "chip chip--warning";
+      if (typing) typing.innerHTML = '<i data-lucide="loader-2"></i><span>Not yet established</span>';
+      if (typing) typing.className = "chip chip--neutral";
+      if (footnote) footnote.innerHTML =
+        '<i data-lucide="info" style="width:14px; height:14px; color: var(--text-faint); flex-shrink:0;"></i>' +
+        '<span class="empty-state__title">This account is still enrolling — more typing data is required before a profile is created.</span>';
+    }
+    setIcon();
+    maybeAddBehavioralRecommendation();
+  }
+
+  function maybeAddBehavioralRecommendation() {
+    var rec = document.getElementById("baRecommendation");
+    var recTitle = document.getElementById("baRecommendationTitle");
+    var recDesc = document.getElementById("baRecommendationDesc");
+    if (!rec || !recTitle || !recDesc) return;
+
+    if (trustResult && trustResult.risk_level === "ENROLLING") {
+      rec.style.display = "flex";
+      recTitle.textContent = "Complete behavioral enrollment";
+      recDesc.textContent = "Keep using the app normally so the platform can finish building this account's typing baseline.";
+    } else if (trustResult && (trustResult.risk_level === "HIGH")) {
+      rec.style.display = "flex";
+      recTitle.textContent = "Recalibrate your typing profile";
+      recDesc.textContent = "Recent typing behavior differs from the enrolled baseline. If this is expected, refresh your behavioral profile to avoid future step-up prompts.";
+    } else {
+      rec.style.display = "none";
+    }
+    setIcon();
+  }
+
+  function loadTrust() {
+    fetch("/api/trust")
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (result.ok && result.data.success) {
+          renderTrust(result.data);
+        } else {
+          renderTrustUnavailable(result.data && result.data.message);
+        }
+      })
+      .catch(function () {
+        renderTrustUnavailable("Unable to reach the risk engine.");
+      });
+  }
+
+  function loadProfile() {
+    fetch("/api/profile")
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (result.ok && result.data.success) {
+          renderProfile(result.data.profile);
+        } else {
+          renderProfileUnavailable(result.data && result.data.message);
+        }
+      })
+      .catch(function () {
+        renderProfileUnavailable("Unable to reach the behavioral profile service.");
+      });
+  }
+
+  loadTrust();
+  loadProfile();
+})();
+</script>
 {% endblock %}

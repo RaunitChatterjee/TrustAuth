@@ -5,14 +5,87 @@
 
 {% block page %}
 <div class="auth-shell">
+
+  <!-- ============================================================
+       LEFT SIDE — Enterprise Branding / Illustration
+       ============================================================ -->
+  <section class="auth-illustration">
+    <div class="auth-illustration__panel" style="width: 380px;">
+
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px;">
+        <span style="width:40px; height:40px; border-radius: var(--r-md); background: var(--risk-low); color: var(--navy); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="shield-check" style="width:21px; height:21px;"></i>
+        </span>
+        <div style="line-height:1.25;">
+          <div style="font-weight:800; font-size:19px; letter-spacing:-0.01em; color:#fff;">TrustAuth</div>
+          <div style="font-size:11.5px; font-weight:600; letter-spacing:0.03em; color:#6EE7B7; text-transform:uppercase;">Enterprise Behavioral Authentication Platform</div>
+        </div>
+      </div>
+
+      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); margin-bottom: 22px;">
+        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
+          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
+        </svg>
+        <div class="trust-widget__score">
+          <span class="trust-widget__value" style="color:#6EE7B7;">98</span>
+          <span class="trust-widget__label" style="color:#94A3B8;">Trust</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="fingerprint" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Behavioral Biometrics</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="activity" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Continuous Authentication</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="radar" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Adaptive Risk Analysis</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="shield-alert" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Transaction Protection</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="width:30px; height:30px; border-radius: var(--r-sm); background: rgba(255,255,255,0.08); color:#6EE7B7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i data-lucide="monitor-check" style="width:15px; height:15px;"></i>
+          </span>
+          <span style="font-size:13.5px; color:#E2E8F0; font-weight:500;">Session Intelligence</span>
+        </div>
+      </div>
+
+      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
+        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
+      </svg>
+      <p class="auth-illustration__caption">
+        <strong>Every session is verified continuously.</strong>
+        TrustAuth analyzes typing rhythm and interaction patterns in the background, so a stolen password alone is never enough to access an account.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       RIGHT SIDE — Login Card
+       ============================================================ -->
   <section class="auth-panel">
     <div class="auth-brand">
       <span class="auth-brand__mark"><i data-lucide="shield-check"></i></span>
       <span class="auth-brand__name">TrustAuth</span>
     </div>
 
-    <h1 class="auth-heading">Welcome back</h1>
-    <p class="auth-subheading">Log in to continue to your account.</p>
+    <h1 class="auth-heading">Secure Enterprise Sign-In</h1>
+    <p class="auth-subheading">Authenticate to access the behavioral authentication console.</p>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -48,7 +121,6 @@
           <input type="checkbox" name="remember">
           Remember me
         </label>
-        <a href="#" class="link">Forgot password?</a>
       </div>
 
       <button type="submit" class="btn btn--primary btn--block">
@@ -61,31 +133,23 @@
       Don't have an account? <a href="{{ url_for('auth.register') }}" class="link">Register</a>
     </p>
 
+    <!-- ============================================================
+         SECURITY INFORMATION — informational only, reuses the
+         existing chip vocabulary already used on Dashboard and
+         Security Center hero sections. No live data, no new endpoints.
+         ============================================================ -->
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:28px;">
+      <span class="chip chip--success"><i data-lucide="fingerprint"></i>Behavioral Biometrics Enabled</span>
+      <span class="chip chip--success"><i data-lucide="activity"></i>Continuous Authentication</span>
+      <span class="chip chip--success"><i data-lucide="radar"></i>Adaptive Risk Engine</span>
+      <span class="chip chip--success"><i data-lucide="monitor-check"></i>Secure Session Monitoring</span>
+    </div>
+
     <div class="auth-footer-note">
       <i data-lucide="activity"></i>
-      <span>Behavioral Authentication Enabled</span>
+      <span>Enterprise Behavioral Biometrics Platform &middot; TrustAuth v1.0</span>
     </div>
   </section>
 
-  <section class="auth-illustration">
-    <div class="auth-illustration__panel">
-      <div class="trust-widget trust-widget--mini" data-risk="low" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);">
-        <svg class="trust-wave" viewBox="0 0 120 32" preserveAspectRatio="none">
-          <polyline class="trust-wave__path" points="0,16 10,16 16,6 22,26 28,10 34,16 120,16"/>
-        </svg>
-        <div class="trust-widget__score">
-          <span class="trust-widget__value" style="color:#6EE7B7;">98</span>
-          <span class="trust-widget__label" style="color:#94A3B8;">Trust</span>
-        </div>
-      </div>
-      <svg class="auth-illustration__wave" viewBox="0 0 320 60" preserveAspectRatio="none">
-        <polyline class="trust-wave__path" points="0,30 40,30 55,10 70,50 85,15 100,30 140,30 155,20 170,40 185,30 320,30"/>
-      </svg>
-      <p class="auth-illustration__caption">
-        <strong>Every session is verified continuously.</strong>
-        TrustAuth analyzes typing rhythm and interaction patterns in the background, so a stolen password alone is never enough to access an account.
-      </p>
-    </div>
-  </section>
 </div>
 {% endblock %}
