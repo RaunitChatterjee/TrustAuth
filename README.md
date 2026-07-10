@@ -74,7 +74,7 @@ TrustAuth removes the assumption that a session remains trustworthy simply becau
 
 ## 🖼️ Screenshots
 
-> Screenshots are placeholders — add captures from your running instance to `docs/screenshots/` and update the paths below.
+
 
 | Dashboard | Transfer Page |
 |---|---|
